@@ -10,7 +10,7 @@ JOB DESCRIPTION:
 ${(job.description || '').substring(0, 2500)}
 ORIGINAL RESUME:
 ${resume}
-Rewrite tailored to this role: ATS optimized 90%+, executive tone, achievement-focused. Do NOT fabricate anything. Format: Professional Summary, Core Skills, Professional Experience, Education and Certifications. Output plain text resume only, no commentary.`;
+Rewrite tailored to this role: ATS optimized 90%+, executive tone, achievement-focused. Do NOT fabricate anything. Format: Professional Summary, Core Skills, Professional Experience, Education and Certifications. Output plain text resume only, no commentary. Use standard Title Case for headings. Do NOT write the Professional Summary or Core Skills sections in ALL CAPITALS.`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
