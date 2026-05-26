@@ -20,7 +20,7 @@ Rewrite tailored to this role: ATS optimized 90%+, executive tone, achievement-f
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 2048,
         messages: [{ role: 'user', content: prompt }],
       }),
