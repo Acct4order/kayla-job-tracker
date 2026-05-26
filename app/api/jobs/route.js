@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const apiKey = process.env.RAPIDAPI_KEY;
@@ -18,7 +20,7 @@ export async function GET() {
           'X-RapidAPI-Key': apiKey,
           'X-RapidAPI-Host': 'jsearch.p.rapidapi.com',
         },
-        next: { revalidate: 7200 }, // auto-refresh every 2 hours
+        cache: 'no-store',
       }
     );
 
