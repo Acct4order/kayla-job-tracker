@@ -9,9 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: 'RAPIDAPI_KEY not set in environment variables' }, { status: 500 });
     }
 
-    const query = encodeURIComponent(
-      'Operations Manager OR Administration Manager OR Office Manager OR Executive Manager Markham OR Richmond Hill OR Toronto Canada'
-    );
+  const query = encodeURIComponent('manager Toronto Canada');
 
     const response = await fetch(
       `https://jsearch.p.rapidapi.com/search?query=${query}&page=1&num_pages=3&date_posted=month`,
