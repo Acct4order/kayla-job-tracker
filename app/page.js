@@ -1,5 +1,4 @@
-'use client';
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from "react";
 
 const RESUME = `KAYLA KWOK
 Markham, ON | (437) 362-9928 | kaylakwok.km@gmail.com
@@ -52,7 +51,14 @@ HK Government, Home Affairs Department | Aug 2013 to Jul 2015
 - Tracked and closed 95%+ of committee action items on schedule
 - Planned and executed large-scale community events covering vendors, budgets, safety`;
 
-// helpers
+const SAMPLE = [
+  { id:"s1", title:"Operations Manager", company:"Sunnybrook Health Sciences Centre", location:"Toronto, ON", workMode:"Hybrid", salary:"CAD $80,000-$95,000/yr", posted:new Date(Date.now()-7200000).toISOString(), description:"We are seeking an Operations Manager to oversee administrative and operational functions across multiple departments. You will manage staff scheduling, vendor relationships, facility maintenance, compliance tracking, and produce executive-level operational reports.\n\nKey Responsibilities:\n- Lead daily operational functions across departments\n- Manage vendor contracts and service level agreements\n- Develop and implement operational policies\n- Produce reports and briefing materials for senior leadership\n- Handle escalations and complex operational issues\n\nQualifications:\n- 5+ years in operations management, preferably healthcare or public sector\n- Strong leadership and people management skills\n- Proficiency in Microsoft Office Suite", applyLink:"#", source:"LinkedIn" },
+  { id:"s2", title:"Administration Manager", company:"City of Markham", location:"Markham, ON", workMode:"On-site", salary:"CAD $75,000-$88,000/yr", posted:new Date(Date.now()-18000000).toISOString(), description:"The Administration Manager will lead governance and administrative operations for the department, including managing committee meetings, governance records, cross-departmental coordination, and policy drafting.\n\nKey Responsibilities:\n- Oversee committee and board meeting administration\n- Maintain governance records, minutes, and action tracking\n- Draft policy documents and administrative procedures\n- Supervise administrative staff\n\nQualifications:\n- 5+ years in municipal or government administration\n- Experience with committee governance and secretariat functions", applyLink:"#", source:"Indeed" },
+  { id:"s3", title:"Office Manager", company:"Deloitte Canada", location:"Toronto, ON", workMode:"Remote", salary:"CAD $70,000-$85,000/yr", posted:new Date(Date.now()-28800000).toISOString(), description:"Deloitte is seeking an experienced Office Manager to oversee administrative operations and support our executive team.\n\nKey Responsibilities:\n- Manage executive calendars, travel, and meeting coordination\n- Oversee office systems and administrative workflows\n- Handle facilities and vendor relationships\n\nQualifications:\n- 5+ years of office or administrative management experience\n- Strong proficiency in Microsoft Office Suite", applyLink:"#", source:"JSearch" },
+  { id:"s4", title:"Executive Manager Corporate Governance", company:"Ontario Securities Commission", location:"Toronto, ON", workMode:"Hybrid", salary:"CAD $90,000-$110,000/yr", posted:new Date(Date.now()-86400000).toISOString(), description:"Senior management role overseeing corporate governance frameworks, ESG compliance reporting, board secretariat operations, and regulatory submissions.\n\nKey Responsibilities:\n- Lead corporate governance frameworks and compliance programs\n- Manage board secretariat including packages, minutes, and records\n- Prepare ESG and sustainability reporting\n\nQualifications:\n- LLB or equivalent legal background preferred\n- 7+ years in corporate governance or compliance roles", applyLink:"#", source:"LinkedIn" },
+  { id:"s5", title:"Senior Administrative Manager", company:"York Region Government", location:"Richmond Hill, ON", workMode:"Hybrid", salary:"CAD $82,000-$98,000/yr", posted:new Date(Date.now()-129600000).toISOString(), description:"Manage administrative operations for a regional government department including HR coordination, policy development, and reporting to senior leadership.\n\nKey Responsibilities:\n- Lead administrative operations and supervise admin team\n- Coordinate HR functions including recruitment and onboarding\n- Support committee governance and meeting administration\n\nQualifications:\n- 7+ years in senior administrative or management roles\n- Public sector experience strongly preferred", applyLink:"#", source:"Indeed" }
+];
+
 const timeAgo = d => { if(!d)return'--'; const ms=Date.now()-new Date(d).getTime(),m=Math.floor(ms/60000); if(m<1)return'just now'; if(m<60)return m+'m ago'; const h=Math.floor(m/60); if(h<24)return h+'h ago'; return Math.floor(h/24)+'d ago'; };
 const fmtDate = d => { if(!d)return'--'; return new Date(d).toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'}); };
 const MC = { Remote:{bg:'#dcfce7',color:'#166534'}, Hybrid:{bg:'#dbeafe',color:'#1d4ed8'}, 'On-site':{bg:'#ffedd5',color:'#c2410c'} };
@@ -65,51 +71,126 @@ const txJob = j => ({id:j.job_id,title:j.job_title,company:j.employer_name,locat
 const dedupKey = j => (j.title||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,18)+'__'+(j.company||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15);
 const mergeJobs = (existing,incoming) => { const idSet=new Set(existing.map(j=>j.id)),hashSet=new Set(existing.map(dedupKey));let dupes=0;const unique=incoming.filter(j=>{if(idSet.has(j.id)||hashSet.has(dedupKey(j))){dupes++;return false;}idSet.add(j.id);hashSet.add(dedupKey(j));return true;});return{unique,dupes}; };
 
-const loadApps = () => { try{ const s=localStorage.getItem('kayla_apps_v2'); return s?JSON.parse(s):[];} catch{return[];} };
-const saveApps = apps => { try{ localStorage.setItem('kayla_apps_v2',JSON.stringify(apps));}catch(e){console.error(e);} };
+const STORE_KEY = 'kayla_applications_v2';
+const loadApps = () => { try{ const s=localStorage.getItem(STORE_KEY);return s?JSON.parse(s):[]; }catch{return[];} };
+const saveApps = apps => { try{ localStorage.setItem(STORE_KEY,JSON.stringify(apps)); }catch(e){console.error(e);} };
 
 const SKWS = ['PROFESSIONAL SUMMARY','CORE SKILLS','PROFESSIONAL EXPERIENCE','EDUCATION','SKILLS','EXPERIENCE','SUMMARY','CERTIFICATIONS'];
 const COKS = ['Government','Corporation','Corp','Inc','Ltd','Health','University','College','Centre','Center','Department','Ministry','CPA','Commission','Region'];
-const lineType = (line,lc) => { if(!line)return'empty'; if(lc===1)return'name'; if(lc===2&&(line.indexOf('@')>=0||(line.match(/\|/g)||[]).length>=2))return'contact'; if(SKWS.some(k=>line.toUpperCase().indexOf(k)>=0)||(line===line.toUpperCase()&&line.length>4&&line.split(' ').length<=6&&line.indexOf('-')<0&&(line.match(/\|/g)||[]).length===0&&!/^\d/.test(line)))return'section'; if(line.startsWith('-')||line.startsWith('*'))return'bullet'; if(/\d{4}/.test(line)||(line.match(/\|/g)||[]).length>=1||COKS.some(k=>line.indexOf(k)>=0))return'company'; const ws=line.split(' '); if(ws.length<=7&&ws.filter(w=>w.length>3).every(w=>w[0]===w[0]?.toUpperCase())&&lc>3)return'jobtitle'; return'body'; };
+
+const lineType = (line, lc) => {
+  if(!line)return'empty';
+  if(lc===1)return'name';
+  if(lc===2&&(line.indexOf('@')>=0||(line.match(/\|/g)||[]).length>=2))return'contact';
+  const isKnown=SKWS.some(k=>line.toUpperCase().indexOf(k)>=0);
+  const isShortCaps=line===line.toUpperCase()&&line.length>4&&line.split(' ').length<=6&&line.indexOf('-')<0&&(line.match(/\|/g)||[]).length===0&&!/^\d/.test(line);
+  if(isKnown||isShortCaps)return'section';
+  if(line.startsWith('-')||line.startsWith('*'))return'bullet';
+  if(/\d{4}/.test(line)||(line.match(/\|/g)||[]).length>=1||COKS.some(k=>line.indexOf(k)>=0))return'company';
+  const ws=line.split(' ');
+  if(ws.length<=7&&ws.filter(w=>w.length>3).every(w=>w[0]===w[0]?.toUpperCase())&&lc>3)return'jobtitle';
+  return'body';
+};
 
 const generatePDF = async (resumeText, job, setDl) => {
   setDl(true);
   try {
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({unit:'mm',format:'a4'});
-    const W=210,H=297,ml=20,mr=20,mt=24,mb=20,uw=170;
+    const W=210,H=297,ml=22,mr=22,mt=24,mb=22,uw=166;
     let y=mt;
-    const NAVY=[30,58,138],DARK=[15,23,42],GRAY=[100,116,139],LGRAY=[180,190,200];
+    const INK=[26,32,44],NAVY=[28,54,120],MUTED=[80,96,115],LGRAY=[160,174,192],RULE=[210,218,228],GOLD=[180,148,80];
     const newPage=()=>{doc.addPage();y=mt;};
     const chk=h=>{if(y+h>H-mb)newPage();};
-    const lines=resumeText.split('\n');let lc=0;
+    const toTitle=s=>s.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ');
+    const lines=resumeText.split('\n');
+    let lc=0;
     for(const raw of lines){
-      const line=raw.trim();if(!line){y+=2;continue;}lc++;const t=lineType(line,lc);
-      if(t==='name'){chk(16);doc.setFillColor(...NAVY);doc.rect(ml,y-5,uw,0.8,'F');y+=2;doc.setFont('helvetica','bold');doc.setFontSize(24);doc.setTextColor(...NAVY);doc.text(line,W/2,y,{align:'center'});y+=9;doc.setFillColor(...NAVY);doc.rect(ml,y,uw,0.4,'F');y+=6;}
-      else if(t==='contact'){chk(8);doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...GRAY);doc.text(line,W/2,y,{align:'center'});y+=7;doc.setTextColor(...DARK);}
-      else if(t==='section'){chk(16);y+=4;doc.setFillColor(...NAVY);doc.rect(ml,y-3.5,3,5,'F');doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...NAVY);const secW=doc.splitTextToSize(line.toUpperCase(),uw-6);doc.text(secW,ml+6,y);y+=secW.length*5;doc.setDrawColor(...LGRAY);doc.setLineWidth(0.3);doc.line(ml+6,y,W-mr,y);y+=5;doc.setTextColor(...DARK);}
-      else if(t==='bullet'){const bt=line.replace(/^[-*]\s*/,'');doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...DARK);const wrp=doc.splitTextToSize(bt,uw-9);chk(wrp.length*4.6+1);doc.setFillColor(...NAVY);doc.circle(ml+3,y-1.2,0.8,'F');doc.text(wrp,ml+7,y);y+=wrp.length*4.6+0.5;}
-      else if(t==='company'){chk(7);doc.setFont('helvetica','italic');doc.setFontSize(8.5);doc.setTextColor(...GRAY);const wrp=doc.splitTextToSize(line,uw);doc.text(wrp,ml,y);y+=wrp.length*4.2+1;doc.setTextColor(...DARK);}
-      else if(t==='jobtitle'){chk(9);y+=2;doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...DARK);doc.text(line,ml,y);y+=5.5;}
-      else{doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...DARK);const wrp=doc.splitTextToSize(line,uw);chk(wrp.length*4.6);doc.text(wrp,ml,y);y+=wrp.length*4.6+1;}
+      const line=raw.trim();
+      if(!line){y+=2;continue;}
+      lc++;
+      const t=lineType(line,lc);
+      if(t==='name'){
+        chk(22);
+        doc.setFont('helvetica','bold');doc.setFontSize(28);doc.setTextColor(...NAVY);
+        doc.text(line,ml,y);y+=9;
+        doc.setDrawColor(...GOLD);doc.setLineWidth(1.2);doc.line(ml,y,W-mr,y);
+        doc.setDrawColor(...NAVY);doc.setLineWidth(0.3);doc.line(ml,y+1.8,W-mr,y+1.8);
+        y+=7;
+      } else if(t==='contact'){
+        chk(7);
+        doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...MUTED);
+        doc.text(line,ml,y);y+=8;doc.setTextColor(...INK);
+      } else if(t==='section'){
+        chk(16);y+=7;
+        const title=toTitle(line);
+        doc.setFillColor(...GOLD);doc.rect(ml,y-5,2.5,7,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...NAVY);
+        doc.text(title,ml+6,y);y+=3.5;
+        doc.setDrawColor(...RULE);doc.setLineWidth(0.4);doc.line(ml+6,y,W-mr,y);
+        y+=6;doc.setTextColor(...INK);
+      } else if(t==='bullet'){
+        const bt=line.replace(/^[-*]\s*/,'');
+        doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...INK);
+        const wrp=doc.splitTextToSize(bt,uw-8);
+        chk(wrp.length*4.8+1);
+        doc.setFillColor(...GOLD);doc.circle(ml+2.2,y-1.6,0.75,'F');
+        doc.text(wrp,ml+7,y);y+=wrp.length*4.8+0.8;
+      } else if(t==='company'){
+        chk(9);
+        const parts=line.split('|').map(p=>p.trim());
+        const last=parts[parts.length-1];
+        const hasDate=/\d{4}/.test(last)||/present/i.test(last);
+        doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...MUTED);
+        if(parts.length>1&&hasDate){
+          const main=parts.slice(0,-1).join('  /  ');
+          const mainW=doc.splitTextToSize(main,uw-50);
+          doc.text(mainW,ml,y);
+          doc.setFont('helvetica','italic');doc.setTextColor(...GOLD);
+          doc.text(last,W-mr,y,{align:'right'});
+          y+=mainW.length*4.3+2;
+        } else {
+          const wrp=doc.splitTextToSize(line,uw);
+          doc.text(wrp,ml,y);y+=wrp.length*4.3+2;
+        }
+        doc.setTextColor(...INK);
+      } else if(t==='jobtitle'){
+        chk(10);y+=3;
+        doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...INK);
+        doc.text(line,ml,y);y+=5.5;
+      } else {
+        doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...INK);
+        const display=(line===line.toUpperCase()&&line.split(' ').length>4)?toTitle(line):line;
+        const wrp=doc.splitTextToSize(display,uw);
+        chk(wrp.length*4.8);doc.text(wrp,ml,y);y+=wrp.length*4.8+1;
+      }
     }
     const pages=doc.getNumberOfPages();
-    for(let p=1;p<=pages;p++){doc.setPage(p);doc.setDrawColor(...LGRAY);doc.setLineWidth(0.3);doc.line(ml,H-mb+2,W-mr,H-mb+2);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...GRAY);doc.text('Tailored for: '+job.title+' at '+job.company,ml,H-mb+6);if(pages>1)doc.text(p+' / '+pages,W-mr,H-mb+6,{align:'right'});}
+    for(let p=1;p<=pages;p++){
+      doc.setPage(p);
+      doc.setDrawColor(...RULE);doc.setLineWidth(0.3);doc.line(ml,H-mb+2,W-mr,H-mb+2);
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...LGRAY);
+      doc.text('Tailored for: '+job.title+' at '+job.company,ml,H-mb+6);
+      if(pages>1)doc.text(p+' / '+pages,W-mr,H-mb+6,{align:'right'});
+    }
     doc.save('Kayla_Kwok_'+job.title.replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');
   } catch(e){alert('PDF failed: '+e.message);}
   finally{setDl(false);}
 };
 
-const generateWord = (resumeText,job) => {
+const generateWord = (resumeText, job) => {
+  const toTitle=s=>s.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ');
   const lines=resumeText.split('\n');let html='',lc=0;
-  for(const raw of lines){const line=raw.trim();if(!line){html+="<p style='margin:3pt 0'>&nbsp;</p>";continue;}lc++;const t=lineType(line,lc);
-    if(t==='name')html+="<div style='border-top:3pt solid #1e3a8a;padding-top:8pt'></div><p style='font-family:Calibri,sans-serif;font-size:24pt;font-weight:bold;color:#1e3a8a;text-align:center;margin:0 0 2pt'>"+line+"</p><div style='border-bottom:1pt solid #1e3a8a;margin:3pt 0'></div>";
-    else if(t==='contact')html+="<p style='font-family:Calibri,sans-serif;font-size:9pt;color:#64748b;text-align:center;margin:4pt 0 14pt'>"+line+"</p>";
-    else if(t==='section')html+="<p style='font-family:Calibri,sans-serif;font-size:10pt;font-weight:bold;color:#1e3a8a;text-transform:uppercase;letter-spacing:1pt;border-bottom:1pt solid #1e3a8a;margin:14pt 0 5pt;padding-bottom:2pt'>"+line.toUpperCase()+"</p>";
-    else if(t==='bullet')html+="<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0 2pt 16pt;text-indent:-10pt;color:#1e293b;line-height:1.4'>&#9679;&nbsp;"+line.replace(/^[-*]\s*/,'')+"</p>";
-    else if(t==='company')html+="<p style='font-family:Calibri,sans-serif;font-size:9pt;font-style:italic;color:#64748b;margin:1pt 0 3pt'>"+line+"</p>";
-    else if(t==='jobtitle')html+="<p style='font-family:Calibri,sans-serif;font-size:11pt;font-weight:bold;color:#0f172a;margin:10pt 0 1pt'>"+line+"</p>";
-    else html+="<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0;color:#1e293b;line-height:1.5'>"+line+"</p>";
+  for(const raw of lines){
+    const line=raw.trim();if(!line){html+="<p style='margin:3pt 0'>&nbsp;</p>";continue;}lc++;
+    const t=lineType(line,lc);
+    if(t==='name')html+="<div style='border-top:3pt solid #1c3678;padding-top:8pt'></div><p style='font-family:Calibri,sans-serif;font-size:26pt;font-weight:bold;color:#1c3678;margin:0 0 2pt'>"+line+"</p><div style='border-bottom:2pt solid #b4944f;margin:0 0 2pt'></div><div style='border-bottom:0.5pt solid #1c3678;margin:0 0 0'></div>";
+    else if(t==='contact')html+="<p style='font-family:Calibri,sans-serif;font-size:9pt;color:#506070;margin:4pt 0 12pt'>"+line+"</p>";
+    else if(t==='section'){const title=toTitle(line);html+="<table style='width:100%;margin:14pt 0 5pt'><tr><td style='width:3pt;background:#b4944f'>&nbsp;</td><td style='padding-left:6pt;border-bottom:0.5pt solid #d2dae4;padding-bottom:3pt'><span style='font-family:Calibri,sans-serif;font-size:10.5pt;font-weight:bold;color:#1c3678'>"+title+"</span></td></tr></table>";}
+    else if(t==='bullet'){const bt=line.replace(/^[-*]\s*/,'');html+="<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0 2pt 16pt;text-indent:-10pt;color:#1a202c;line-height:1.4'>&#9679;&nbsp;"+bt+"</p>";}
+    else if(t==='company')html+="<p style='font-family:Calibri,sans-serif;font-size:9pt;font-style:italic;color:#506070;margin:1pt 0 3pt'>"+line+"</p>";
+    else if(t==='jobtitle')html+="<p style='font-family:Calibri,sans-serif;font-size:11pt;font-weight:bold;color:#1a202c;margin:10pt 0 1pt'>"+line+"</p>";
+    else{const display=(line===line.toUpperCase()&&line.split(' ').length>4)?toTitle(line):line;html+="<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0;color:#1a202c;line-height:1.5'>"+display+"</p>";}
   }
   html+="<p style='font-family:Calibri,sans-serif;font-size:7.5pt;color:#94a3b8;margin-top:24pt;border-top:0.5pt solid #e2e8f0;padding-top:4pt'>Tailored for: "+job.title+" at "+job.company+"</p>";
   const blob=new Blob(["<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='margin:1in;max-width:7in'>"+html+"</body></html>"],{type:'application/msword'});
@@ -121,7 +202,7 @@ const runATSCheck = text => {
   const hasEmail=/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text),hasPhone=/\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/.test(text);
   const c=(label,passed,pn,fn)=>({label,passed,note:passed?pn:fn});
   const checks=[
-    c('Standard section headings',['SUMMARY','EXPERIENCE','EDUCATION'].every(s=>up.indexOf(s)>=0),'Summary, Experience & Education all present','Missing key sections'),
+    c('Standard section headings',['SUMMARY','EXPERIENCE','EDUCATION'].every(s=>up.indexOf(s)>=0),'Summary, Experience and Education all present','Missing key sections'),
     c('Contact info in body',hasEmail&&hasPhone,'Email and phone detected',(!hasEmail?'Email missing. ':'')+(!hasPhone?'Phone missing.':'')),
     c('No special characters',!/[\u201c\u201d\u2018\u2019\u2013\u2014]/.test(text),'No smart quotes or special symbols','Smart quotes detected'),
     c('Single-column layout',!lines.some(l=>(l.match(/\|/g)||[]).length>3),'Single-column structure','Multi-column layout detected'),
@@ -142,7 +223,7 @@ const Btn = ({onClick,disabled,children,color='#3b82f6',style={}}) => (
 
 export default function App() {
   const [view,setView]=useState('board');
-  const [jobs,setJobs]=useState([]);
+  const [jobs,setJobs]=useState(SAMPLE);
   const [loading,setLoading]=useState(false);
   const [sel,setSel]=useState(null);
   const [ai,setAi]=useState({});
@@ -162,19 +243,24 @@ export default function App() {
   const [histDlPDF,setHistDlPDF]=useState(false);
   const [showAdd,setShowAdd]=useState(false);
   const [newJob,setNewJob]=useState({title:'',company:'',location:'Markham, ON',workMode:'Hybrid',salary:'',description:'',applyLink:''});
+  const [usage,setUsage]=useState({scores:0,rewrites:0});
 
-  useEffect(()=>{ setApplications(loadApps()); },[]);
+  useEffect(()=>{
+    setApplications(loadApps());
+    try{ const s=localStorage.getItem('kayla_usage'); if(s)setUsage(JSON.parse(s)); }catch(e){}
+  },[]);
 
   const setStatus=(msg,ok=true,ms=5000)=>{ setStatusMsg(msg);setStatusOk(ok);if(ms)setTimeout(()=>setStatusMsg(''),ms); };
   const isApplied=id=>applications.some(a=>a.id===id);
+  const trackUsage=type=>{setUsage(prev=>{const u={...prev,[type]:prev[type]+1};localStorage.setItem('kayla_usage',JSON.stringify(u));return u;});};
+  const estCost=()=>((usage.scores*0.01)+(usage.rewrites*0.03)).toFixed(2);
+  const estRemaining=()=>Math.max(0,5-parseFloat(estCost())).toFixed(2);
 
-  const fetchJobs = useCallback(async () => {
-    setLoading(true);
-    setStatus('Fetching live jobs...', true, 0);
-    try {
-      const r = await fetch('/api/jobs');
-      const d = await r.json();
-      if (d.data && d.data.length > 0) {
+  const fetchJobs=useCallback(async()=>{
+    setLoading(true);setStatus('Fetching live jobs...',true,0);
+    try{
+      const r=await fetch('/api/jobs');const d=await r.json();
+      if(d.data&&d.data.length>0){
         const seen=new Set();
         const incoming=d.data.filter(j=>!seen.has(j.job_id)&&seen.add(j.job_id)).map(txJob).sort((a,b)=>new Date(b.posted)-new Date(a.posted));
         const{unique,dupes}=mergeJobs(jobs,incoming);
@@ -182,70 +268,69 @@ export default function App() {
         setLastUpdated(new Date());
         const note=dupes>0?' ('+dupes+' duplicate'+(dupes>1?'s':'')+' filtered)':'';
         setStatus('Loaded '+incoming.length+' live jobs'+note,true);
-      } else if(d.error) {
-        setStatus('Error: '+d.error,false);
-      } else {
-        setStatus('No jobs returned. Check API key in Vercel settings.',false);
-      }
-    } catch(e) {
-      setStatus('Fetch failed: '+e.message,false);
-    } finally {
-      setLoading(false);
-    }
+      }else if(d.error){setStatus('Error: '+d.error,false);}
+      else{setStatus('No jobs returned.',false);}
+    }catch(e){setStatus('Fetch failed: '+e.message,false);}
+    finally{setLoading(false);}
   },[jobs]);
 
-  useEffect(()=>{ fetchJobs(); },[]);
+  const callClaude=async(endpoint,body)=>{
+    const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();if(d.error)throw new Error(d.error);return d;
+  };
 
-  const scoreJob = async job => {
+  const scoreJob=async job=>{
     setAiLoading(p=>({...p,[job.id]:'scoring'}));
-    try {
-      const r=await fetch('/api/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job,resume:RESUME})});
-      const data=await r.json();
-      if(data.error)throw new Error(data.error);
-      setAi(p=>({...p,[job.id]:{...p[job.id],score:data}}));
-      setTab('score');
-    } catch(e){alert('Scoring failed: '+e.message);}
+    try{
+      const prompt='You are a senior recruiter with 20 years experience AND the CEO of the hiring company.\nJOB: '+job.title+' at '+job.company+' | '+job.location+' | '+job.workMode+' | '+job.salary+'\nJOB DESCRIPTION:\n'+(job.description||'').substring(0,2000)+'\nCANDIDATE RESUME:\n'+RESUME+'\nReturn ONLY raw JSON, no markdown:\n{"ats_score":<0-100>,"recruiter_score":<0-100>,"ceo_score":<0-100>,"breakdown":{"leadership":{"score":<0-100>,"comment":"<1 sentence>"},"relevant_experience":{"score":<0-100>,"comment":"<1 sentence>"},"technical_skills":{"score":<0-100>,"comment":"<1 sentence>"},"education":{"score":<0-100>,"comment":"<1 sentence>"},"communication":{"score":<0-100>,"comment":"<1 sentence>"}},"strengths":["<s1>","<s2>","<s3>"],"gaps":["<g1>","<g2>","<g3>"],"recommendation":"<STRONG PROCEED|PROCEED|CONDITIONAL|NOT RECOMMENDED>","summary":"<2-3 sentences>"}';
+      const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1024,messages:[{role:'user',content:prompt}]})});
+      const d=await r.json();if(d.error)throw new Error(d.error.message);
+      const txt=d.content?.[0]?.text||'{}';
+      setAi(p=>({...p,[job.id]:{...p[job.id],score:JSON.parse(txt.replace(/```json|```/g,'').trim())}}));
+      trackUsage('scores');setTab('score');
+    }catch(e){alert('Scoring failed: '+e.message);}
     finally{setAiLoading(p=>({...p,[job.id]:null}));}
   };
 
-  const rewriteJob = async job => {
+  const rewriteJob=async job=>{
     setAiLoading(p=>({...p,[job.id]:'rewriting'}));
-    try {
-      const r=await fetch('/api/rewrite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job,resume:RESUME})});
-      const data=await r.json();
-      if(data.error)throw new Error(data.error);
-      const atsResult=runATSCheck(data.result);
-      setAi(p=>({...p,[job.id]:{...p[job.id],rewrite:data.result,ats:atsResult}}));
-      setTab('resume');
-    } catch(e){alert('Rewrite failed: '+e.message);}
+    try{
+      const prompt='You are an elite executive resume writer placing senior management candidates.\nTARGET: '+job.title+' at '+job.company+' | '+job.location+' | '+job.workMode+'\nJOB DESCRIPTION:\n'+(job.description||'').substring(0,2000)+'\nORIGINAL RESUME:\n'+RESUME+'\nRewrite tailored to this role: ATS optimized 90%+, executive tone, achievement-focused. Do NOT fabricate. Use standard Title Case throughout. Do NOT write any section in ALL CAPITALS. Format: Professional Summary, Core Skills, Professional Experience, Education and Certifications. Output plain text only.';
+      const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2048,messages:[{role:'user',content:prompt}]})});
+      const d=await r.json();if(d.error)throw new Error(d.error.message);
+      const txt=d.content?.[0]?.text||'';
+      const atsResult=runATSCheck(txt);
+      setAi(p=>({...p,[job.id]:{...p[job.id],rewrite:txt,ats:atsResult}}));
+      trackUsage('rewrites');setTab('resume');
+    }catch(e){alert('Rewrite failed: '+e.message);}
     finally{setAiLoading(p=>({...p,[job.id]:null}));}
   };
 
-  const handleApply = async job => {
+  const handleApply=async job=>{
     const prev=applications.find(a=>a.id===job.id);
     if(prev){setApplyMsg('Already applied on '+fmtDate(prev.appliedAt));setTimeout(()=>setApplyMsg(''),3000);}
     else{
       const aiData=ai[job.id]||{};
       const entry={id:job.id,title:job.title,company:job.company,location:job.location,workMode:job.workMode,salary:job.salary,source:job.source,posted:job.posted,applyLink:job.applyLink,appliedAt:new Date().toISOString(),resume:aiData.rewrite||'',recruiterScore:aiData.score?.recruiter_score||null,atsScore:aiData.score?.ats_score||null,atsCheckPassed:aiData.ats?.passed||false,recommendation:aiData.score?.recommendation||null};
-      const updated=[entry,...applications];
-      setApplications(updated);saveApps(updated);
+      const updated=[entry,...applications];setApplications(updated);saveApps(updated);
       setApplyMsg('Saved to Application History');setTimeout(()=>setApplyMsg(''),3000);
     }
     if(job.applyLink&&job.applyLink!=='#')window.open(job.applyLink,'_blank');
   };
 
-  const addJob = () => {
+  const addJob=()=>{
     if(!newJob.title||!newJob.company||!newJob.description)return;
-    const entry={...newJob,id:'manual_'+Date.now(),posted:new Date().toISOString(),source:'Manual'};
-    setJobs(prev=>[entry,...prev]);
+    setJobs(prev=>[{...newJob,id:'manual_'+Date.now(),posted:new Date().toISOString(),source:'Manual'},...prev]);
     setNewJob({title:'',company:'',location:'Markham, ON',workMode:'Hybrid',salary:'',description:'',applyLink:''});
     setShowAdd(false);
   };
 
-  const deleteApp = id => { const updated=applications.filter(a=>a.id!==id);setApplications(updated);saveApps(updated);if(histSel?.id===id)setHistSel(null); };
-  const copyText = txt => { navigator.clipboard.writeText(txt);setCopyMsg('Copied!');setTimeout(()=>setCopyMsg(''),2000); };
-  const filtered = jobs.filter(j=>modeFilter==='all'||j.workMode===modeFilter);
-  const avgScore = applications.length?Math.round(applications.filter(a=>a.recruiterScore).reduce((s,a)=>s+a.recruiterScore,0)/Math.max(1,applications.filter(a=>a.recruiterScore).length)):null;
+  const deleteApp=id=>{const updated=applications.filter(a=>a.id!==id);setApplications(updated);saveApps(updated);if(histSel?.id===id)setHistSel(null);};
+  const copyText=txt=>{navigator.clipboard.writeText(txt);setCopyMsg('Copied!');setTimeout(()=>setCopyMsg(''),2000);};
+  const filtered=jobs.filter(j=>modeFilter==='all'||j.workMode===modeFilter);
+  const avgScore=applications.length?Math.round(applications.filter(a=>a.recruiterScore).reduce((s,a)=>s+a.recruiterScore,0)/Math.max(1,applications.filter(a=>a.recruiterScore).length)):null;
+  const spent=parseFloat(estCost()),remaining=parseFloat(estRemaining());
+  const budgetPct=Math.min(100,(spent/5)*100);
 
   return (
     <div style={{fontFamily:'Inter,system-ui,sans-serif',height:'100vh',display:'flex',flexDirection:'column',background:'#f1f5f9',overflow:'hidden'}}>
@@ -253,7 +338,7 @@ export default function App() {
       <div style={{background:'#0f172a',padding:'10px 20px',display:'flex',alignItems:'center',gap:12,flexShrink:0}}>
         <div style={{flex:1}}>
           <div style={{fontSize:16,fontWeight:800,color:'white'}}>Kayla Job Tracker</div>
-          <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>{lastUpdated?'Live - Last updated '+timeAgo(lastUpdated.toISOString()):'Loading live jobs...'}</div>
+          <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>{lastUpdated?'Live - Updated '+timeAgo(lastUpdated.toISOString()):'Sample data'}</div>
         </div>
         <div style={{display:'flex',background:'#1e293b',borderRadius:8,padding:3,gap:2}}>
           {[['board','Job Board'],['history','Applications'+(applications.length?' ('+applications.length+')':'')]].map(([v,l])=>(
@@ -270,6 +355,21 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {(usage.scores>0||usage.rewrites>0)&&(
+        <div style={{background:'#0f172a',borderBottom:'1px solid #1e293b',padding:'5px 20px',display:'flex',alignItems:'center',gap:14,flexShrink:0}}>
+          <div style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>API Credit</div>
+          <div style={{flex:1,height:4,background:'#1e293b',borderRadius:2,overflow:'hidden'}}>
+            <div style={{height:'100%',width:budgetPct+'%',background:budgetPct<50?'#16a34a':budgetPct<80?'#d97706':'#dc2626',borderRadius:2}}/>
+          </div>
+          <div style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>
+            <span style={{color:budgetPct<50?'#16a34a':budgetPct<80?'#d97706':'#dc2626',fontWeight:700}}>${spent}</span> of $5.00 used
+            &nbsp;|&nbsp;{usage.scores} scores, {usage.rewrites} rewrites
+            &nbsp;|&nbsp;<span style={{color:remaining>1?'#16a34a':'#d97706',fontWeight:600}}>${remaining} left</span>
+            {remaining<0.5&&<span style={{color:'#dc2626',fontWeight:700}}> - top up soon</span>}
+          </div>
+        </div>
+      )}
 
       {statusMsg&&<div style={{background:statusOk?'#f0fdf4':'#fef2f2',borderBottom:'1px solid '+(statusOk?'#bbf7d0':'#fecaca'),padding:'8px 20px',fontSize:12,color:statusOk?'#166534':'#991b1b',fontWeight:600,flexShrink:0}}>{statusMsg}</div>}
 
@@ -302,7 +402,7 @@ export default function App() {
                   {['Position','Company','Location','Mode','Salary','Posted','Score',''].map(h=><th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.06em',whiteSpace:'nowrap'}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
-                  {filtered.length===0&&<tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#94a3b8',fontSize:13}}>{loading?'Fetching live jobs...':'No jobs yet. Click Refresh or Add a job.'}</td></tr>}
+                  {filtered.length===0&&<tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#94a3b8',fontSize:13}}>No jobs yet.</td></tr>}
                   {filtered.map((j,i)=>{
                     const sc=ai[j.id]?.score,il=aiLoading[j.id],isSel=sel?.id===j.id,applied=isApplied(j.id);
                     return(<tr key={j.id} onClick={()=>{setSel(j);setTab('details');}} style={{borderBottom:'1px solid #f1f5f9',cursor:'pointer',background:applied?'#f0fdf4':isSel?'#eff6ff':i%2?'#fafafa':'white'}}>
@@ -347,7 +447,6 @@ export default function App() {
                       <button onClick={()=>handleApply(sel)} style={{padding:'8px 14px',borderRadius:8,border:'none',background:isApplied(sel.id)?'#f0fdf4':'#0f172a',color:isApplied(sel.id)?'#166534':'white',fontSize:13,fontWeight:700,cursor:'pointer'}}>{isApplied(sel.id)?'Applied - Apply Again':'Apply and Save'}</button>
                     </div>
                     {applyMsg&&<div style={{fontSize:12,color:'#166534',background:'#f0fdf4',padding:'6px 12px',borderRadius:8,marginBottom:10,fontWeight:600}}>{applyMsg}</div>}
-                    {!ai[sel.id]?.rewrite&&<div style={{fontSize:11,color:'#94a3b8',marginBottom:12,background:'#fafafa',padding:'8px 12px',borderRadius:8}}>Tip: Tailor your resume first before applying.</div>}
                     <div style={{fontSize:13,lineHeight:1.8,color:'#374151',whiteSpace:'pre-wrap'}}>{sel.description}</div>
                   </div>
                 )}
@@ -403,10 +502,10 @@ export default function App() {
                         {atsExpanded&&(<div style={{background:'white',padding:'8px 14px 4px'}}>{ats.checks.map((chk,i)=>(<div key={i} style={{display:'flex',gap:10,padding:'7px 0',borderBottom:i<ats.checks.length-1?'1px solid #f8fafc':'none',alignItems:'flex-start'}}><span style={{fontSize:14,fontWeight:800,color:chk.passed?'#16a34a':'#dc2626',flexShrink:0,marginTop:1}}>{chk.passed?'v':'x'}</span><div><div style={{fontSize:12,fontWeight:600}}>{chk.label}</div><div style={{fontSize:11,color:chk.passed?'#64748b':'#dc2626',marginTop:1,lineHeight:1.4}}>{chk.note}</div></div></div>))}</div>)}
                       </div>
                     )}
-                    <div style={{background:'#1e3a8a',borderRadius:12,padding:'14px 18px',marginBottom:14,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+                    <div style={{background:'#1c3678',borderRadius:12,padding:'14px 18px',marginBottom:14,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
                       <div><div style={{color:'white',fontWeight:700,fontSize:13,marginBottom:2}}>Download Resume</div><div style={{color:'#93c5fd',fontSize:11}}>Professional format, ready to send</div></div>
                       <div style={{display:'flex',gap:8}}>
-                        <button onClick={()=>generatePDF(rw,sel,setDlPDF)} disabled={dlPDF} style={{padding:'8px 16px',borderRadius:8,border:'2px solid white',background:'white',color:'#1e3a8a',fontWeight:700,fontSize:12,cursor:dlPDF?'wait':'pointer',opacity:dlPDF?0.7:1}}>
+                        <button onClick={()=>generatePDF(rw,sel,setDlPDF)} disabled={dlPDF} style={{padding:'8px 16px',borderRadius:8,border:'2px solid white',background:'white',color:'#1c3678',fontWeight:700,fontSize:12,cursor:dlPDF?'wait':'pointer',opacity:dlPDF?0.7:1}}>
                           {dlPDF?'Generating...':'PDF'+(ats?.passed?' (ATS OK)':'')}
                         </button>
                         <button onClick={()=>generateWord(rw,sel)} style={{padding:'8px 16px',borderRadius:8,border:'2px solid rgba(255,255,255,0.4)',background:'rgba(255,255,255,0.12)',color:'white',fontWeight:700,fontSize:12,cursor:'pointer'}}>
@@ -436,7 +535,6 @@ export default function App() {
           {applications.length===0?(
             <div style={{textAlign:'center',padding:60,color:'#94a3b8',background:'white',borderRadius:16}}>
               <div style={{fontSize:16,fontWeight:700,color:'#64748b',marginBottom:8}}>No applications yet</div>
-              <div style={{fontSize:13,marginBottom:20}}>Click a job, press Apply and Save</div>
               <Btn onClick={()=>setView('board')}>Browse Jobs</Btn>
             </div>
           ):(
@@ -465,7 +563,7 @@ export default function App() {
                                 <div><div style={{fontWeight:700,fontSize:13}}>{a.title} at {a.company}</div><div style={{fontSize:11,color:'#64748b',marginTop:2}}>Applied {fmtDate(a.appliedAt)}{a.atsCheckPassed?' - ATS Ready':''}</div></div>
                                 <div style={{display:'flex',gap:8}}>
                                   <button onClick={()=>{navigator.clipboard.writeText(a.resume);setHistCopy('Copied!');setTimeout(()=>setHistCopy(''),2000);}} style={{padding:'6px 12px',borderRadius:6,border:'1px solid #e2e8f0',background:histCopy?'#f0fdf4':'white',fontSize:11,cursor:'pointer',color:histCopy?'#166534':'#475569',fontWeight:600}}>{histCopy||'Copy'}</button>
-                                  <button onClick={()=>generatePDF(a.resume,a,setHistDlPDF)} disabled={histDlPDF} style={{padding:'6px 12px',borderRadius:6,border:'none',background:'#1e3a8a',color:'white',fontSize:11,cursor:histDlPDF?'wait':'pointer',fontWeight:600}}>{histDlPDF?'...':'PDF'}</button>
+                                  <button onClick={()=>generatePDF(a.resume,a,setHistDlPDF)} disabled={histDlPDF} style={{padding:'6px 12px',borderRadius:6,border:'none',background:'#1c3678',color:'white',fontSize:11,cursor:histDlPDF?'wait':'pointer',fontWeight:600}}>{histDlPDF?'...':'PDF'}</button>
                                   <button onClick={()=>generateWord(a.resume,a)} style={{padding:'6px 12px',borderRadius:6,border:'none',background:'#475569',color:'white',fontSize:11,cursor:'pointer',fontWeight:600}}>Word</button>
                                 </div>
                               </div>
