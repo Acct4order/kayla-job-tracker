@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useCallback, useEffect } from "react";
 
 const RESUME = `KAYLA KWOK
