@@ -113,7 +113,7 @@ const generatePDF = async (resumeText, job, setDl) => {
       if(t==='name'){
         chk(22);
         doc.setFont('helvetica','bold');doc.setFontSize(28);doc.setTextColor(...NAVY);
-        doc.text(line,ml,y);y+=9;
+        doc.text(line,W/2,y,{align:'center'});y+=9;
         doc.setDrawColor(...GOLD);doc.setLineWidth(1.2);doc.line(ml,y,W-mr,y);
         doc.setDrawColor(...NAVY);doc.setLineWidth(0.3);doc.line(ml,y+1.8,W-mr,y+1.8);
         y+=7;
@@ -167,11 +167,12 @@ const generatePDF = async (resumeText, job, setDl) => {
     }
     const pages=doc.getNumberOfPages();
     for(let p=1;p<=pages;p++){
-      doc.setPage(p);
-      doc.setDrawColor(...RULE);doc.setLineWidth(0.3);doc.line(ml,H-mb+2,W-mr,H-mb+2);
-      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...LGRAY);
-      doc.text('Tailored for: '+job.title+' at '+job.company,ml,H-mb+6);
-      if(pages>1)doc.text(p+' / '+pages,W-mr,H-mb+6,{align:'right'});
+      if(pages>1){
+        doc.setPage(p);
+        doc.setDrawColor(...RULE);doc.setLineWidth(0.3);doc.line(ml,H-mb+2,W-mr,H-mb+2);
+        doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...LGRAY);
+        doc.text(p+' / '+pages,W-mr,H-mb+6,{align:'right'});
+      }
     }
     doc.save('Kayla_Kwok_'+job.title.replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');
   } catch(e){alert('PDF failed: '+e.message);}
