@@ -73,7 +73,9 @@ const getLineType = (line, lc) => {
   if (!line) return 'empty';
   if (lc === 1) return 'name';
   if (lc === 2 && (line.indexOf('@') >= 0 || (line.match(/\|/g) || []).length >= 2)) return 'contact';
-  const isKnown = SKWS.some(k => line.toUpperCase().indexOf(k) >= 0);
+  const wordCount = line.trim().split(' ').length;
+  // Only short lines can be section headers — prevents body paragraphs with words like "experience" being misdetected
+  const isKnown = wordCount <= 5 && SKWS.some(k => line.toUpperCase().indexOf(k) >= 0);
   const isShortCaps = line === line.toUpperCase() && line.length > 4 && line.split(' ').length <= 6 && line.indexOf('-') < 0 && (line.match(/\|/g) || []).length === 0 && !/^\d/.test(line);
   if (isKnown || isShortCaps) return 'section';
   if (line.startsWith('-') || line.startsWith('*')) return 'bullet';
