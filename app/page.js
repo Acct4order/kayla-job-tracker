@@ -293,17 +293,18 @@ export default function App() {
       const r = await fetch('/api/jobs'); const d = await r.json();
       if (d.data && d.data.length > 0) {
         const seen = new Set();
-        const incoming = d.data.filter(j => !seen.has(j.job_id) && seen.add(j.job_id)).map(txJob).sort((a, b) => new Date(b.posted) - new Date(a.posted));
-        const { unique, dupes } = mergeJobs(jobs, incoming);
-        setJobs(prev => [...unique, ...prev.filter(p => !unique.find(u => u.id === p.id))].sort((a, b) => new Date(b.posted) - new Date(a.posted)));
+        const incoming = d.data
+          .filter(j => !seen.has(j.job_id) && seen.add(j.job_id))
+          .map(txJob)
+          .sort((a, b) => new Date(b.posted) - new Date(a.posted));
+        setJobs(incoming);
         setLastUpdated(new Date());
-        const note = dupes > 0 ? ' (' + dupes + ' duplicate' + (dupes > 1 ? 's' : '') + ' filtered)' : '';
-        setStatus('Loaded ' + incoming.length + ' live jobs' + note, true);
+        setStatus('Loaded ' + incoming.length + ' live jobs', true);
       } else if (d.error) { setStatus('Error: ' + d.error, false); }
       else { setStatus('No jobs returned.', false); }
     } catch (e) { setStatus('Fetch failed: ' + e.message, false); }
     finally { setLoading(false); }
-  }, [jobs]);
+  }, []);
 
   useEffect(() => { fetchJobs(); }, []);
 
