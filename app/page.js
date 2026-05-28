@@ -114,6 +114,101 @@ const generatePDF = async (resumeText, job, setDl) => {
   try {
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210, H = 297, ml = 20, mr = 20, mt = 22, mb = 20;
+    const uw = W - ml - mr; // 170mm — matches gold bar exactly
+    let y = mt;
+    const INK=[26,32,44],NAVY=[28,54,120],MUTED=[80,96,115],LGRAY=[160,174,192],RULE=[210,218,228],GOLD=[180,148,80];
+    const newPage = () => { doc.addPage(); y = mt; };
+    const chk = h => { if (y + h > H - mb) newPage(); };
+    const toTitle = s => s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    // Render array of lines at exact y positions
+    const put = (arr, x, sy, lh) => arr.forEach((l, i) => doc.text(l, x, sy + i * lh));
+    // Split using jsPDF font metrics — exact width match
+    const split = (text, w) => { const r = doc.splitTextToSize(text, w); return Array.isArray(r) ? r : [text]; };
+
+    const lines = resumeText.split('\n');
+    let lc = 0;
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) { y += 1.5; continue; }
+      lc++;
+      const t = getLineType(line, lc);
+
+      if (t === 'name') {
+        chk(20); doc.setFont('helvetica','bold'); doc.setFontSize(26); doc.setTextColor(...NAVY);
+        doc.text(line, W/2, y, {align:'center'}); y += 8;
+        doc.setDrawColor(...GOLD); doc.setLineWidth(1.2); doc.line(ml,y,W-mr,y);
+        doc.setDrawColor(...NAVY); doc.setLineWidth(0.3); doc.line(ml,y+1.8,W-mr,y+1.8); y += 6;
+
+      } else if (t === 'contact') {
+        chk(6); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
+        doc.text(line, W/2, y, {align:'center'}); y += 7; doc.setTextColor(...INK);
+
+      } else if (t === 'section') {
+        chk(14); y += 5;
+        doc.setFillColor(...GOLD); doc.rect(ml, y-4.5, 2.5, 6.5, 'F');
+        doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...NAVY);
+        doc.text(toTitle(line), ml+5, y); y += 3;
+        doc.setDrawColor(...RULE); doc.setLineWidth(0.4); doc.line(ml, y, W-mr, y);
+        y += 5; doc.setTextColor(...INK);
+
+      } else if (t === 'bullet') {
+        const bt = line.replace(/^[-*]\s*/,'');
+        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...INK);
+        const wrp = split(bt, uw-7); chk(wrp.length*4.5+1);
+        doc.setFillColor(...GOLD); doc.circle(ml+2, y-1.5, 0.7, 'F');
+        put(wrp, ml+6, y, 4.5); y += wrp.length*4.5+0.5;
+
+      } else if (t === 'company') {
+        chk(8);
+        const parts = line.split('|').map(p => p.trim());
+        const last = parts[parts.length-1];
+        const hasDate = /\d{4}/.test(last) || /present/i.test(last);
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
+        if (parts.length > 1 && hasDate) {
+          doc.setFont('helvetica','normal');
+          const main = parts.slice(0,-1).join('  /  ');
+          const mainW = split(main, uw-45); put(mainW, ml, y, 4.2);
+          doc.setFont('helvetica','italic'); doc.setTextColor(...GOLD);
+          doc.text(last, W-mr, y, {align:'right'}); y += mainW.length*4.2+1.5;
+        } else {
+          doc.setFont('helvetica','normal');
+          const wrp = split(line, uw); put(wrp, ml, y, 4.2); y += wrp.length*4.2+1.5;
+        }
+        doc.setTextColor(...INK);
+
+      } else if (t === 'jobtitle') {
+        chk(9); y += 2;
+        doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...INK);
+        doc.text(line, ml, y); y += 5;
+
+      } else {
+        // Body text — use exact font metrics for full-width wrapping
+        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...INK);
+        const hasManyPipes = (line.match(/\|/g)||[]).length > 3;
+        const display = hasManyPipes ? line : sentCase(line);
+        const wrp = split(display, uw); chk(wrp.length*4.5);
+        put(wrp, ml, y, 4.5); y += wrp.length*4.5+0.8;
+      }
+    }
+
+    const pages = doc.getNumberOfPages();
+    if (pages > 1) {
+      for (let p = 1; p <= pages; p++) {
+        doc.setPage(p);
+        doc.setDrawColor(...RULE); doc.setLineWidth(0.3); doc.line(ml,H-mb+2,W-mr,H-mb+2);
+        doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...LGRAY);
+        doc.text(p+' / '+pages, W-mr, H-mb+6, {align:'right'});
+      }
+    }
+    doc.save('Kayla_Kwok_'+job.title.replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');
+  } catch(e) { alert('PDF failed: '+e.message); }
+  finally { setDl(false); }
+};
+  setDl(true);
+  try {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = 210, H = 297, ml = 22, mr = 22, mt = 24, mb = 22;
     let y = mt;
     const INK=[26,32,44],NAVY=[28,54,120],MUTED=[80,96,115],LGRAY=[160,174,192],RULE=[210,218,228],GOLD=[180,148,80];
@@ -141,12 +236,12 @@ const generatePDF = async (resumeText, job, setDl) => {
         doc.setFillColor(...GOLD); doc.rect(ml, y-5, 2.5, 7, 'F');
         doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...NAVY);
         doc.text(toTitle(line), ml+6, y); y += 3.5;
-        doc.setDrawColor(...RULE); doc.setLineWidth(0.4); doc.line(ml, y, W-mr, y);
+        doc.setDrawColor(...RULE); doc.setLineWidth(0.4); doc.line(ml+6, y, W-mr, y);
         y += 6; doc.setTextColor(...INK);
       } else if (t === 'bullet') {
         const bt = line.replace(/^[-*]\s*/,'');
         doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-        const wrp = ww(bt, 90); chk(wrp.length*4.8+1);
+        const wrp = ww(bt, 78); chk(wrp.length*4.8+1);
         doc.setFillColor(...GOLD); doc.circle(ml+2.2, y-1.6, 0.75, 'F');
         put(wrp, ml+7, y, 4.8); y += wrp.length*4.8+0.8;
       } else if (t === 'company') {
@@ -161,7 +256,7 @@ const generatePDF = async (resumeText, job, setDl) => {
           doc.setFont('helvetica','italic'); doc.setTextColor(...GOLD);
           doc.text(last, W-mr, y, {align:'right'}); y += mainW.length*4.3+2;
         } else {
-          const wrp = ww(line, 95); put(wrp, ml, y, 4.3); y += wrp.length*4.3+2;
+          const wrp = ww(line, 85); put(wrp, ml, y, 4.3); y += wrp.length*4.3+2;
         }
         doc.setTextColor(...INK);
       } else if (t === 'jobtitle') {
@@ -169,7 +264,7 @@ const generatePDF = async (resumeText, job, setDl) => {
         doc.text(line, ml, y); y += 5.5;
       } else {
         doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-        const wrp = ww(sentCase(line), 95); chk(wrp.length*4.8);
+        const wrp = ww(sentCase(line), 82); chk(wrp.length*4.8);
         put(wrp, ml, y, 4.8); y += wrp.length*4.8+1;
       }
     }
