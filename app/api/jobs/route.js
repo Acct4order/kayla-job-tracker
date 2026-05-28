@@ -38,27 +38,36 @@ async function fetchAndStore() {
     return NextResponse.json({ error: 'RAPIDAPI_KEY not set' }, { status: 500 });
   }
 
-  const query = encodeURIComponent(
-    'Operations Manager OR Administration Manager OR Office Manager OR Executive Manager Markham OR Richmond Hill OR Toronto Canada'
-  );
+  const queries = [
+    'Operations Manager Toronto Ontario Canada',
+    'Administration Manager Toronto Ontario Canada',
+    'Office Manager Toronto Ontario Canada',
+    'Executive Manager Toronto Ontario Canada',
+  ];
 
-  const response = await fetch(
-    `https://jsearch.p.rapidapi.com/search?query=${query}&page=1&num_pages=3&date_posted=month`,
-    {
-      headers: {
-        'X-RapidAPI-Key': apiKey,
-        'X-RapidAPI-Host': 'jsearch.p.rapidapi.com',
-      },
-      cache: 'no-store',
-    }
-  );
-
-  const data = await response.json();
-
-  if (data.data && data.data.length > 0) {
-    // Store in Redis for 2 hours
-    await redis.set('kayla_jobs', data.data, { ex: 7200 });
+  const allJobs = [];
+  for (const q of queries) {
+    const response = await fetch(
+      `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(q)}&page=1&num_pages=2&date_posted=month`,
+      {
+        headers: {
+          'X-RapidAPI-Key': apiKey,
+          'X-RapidAPI-Host': 'jsearch.p.rapidapi.com',
+        },
+        cache: 'no-store',
+      }
+    );
+    const data = await response.json();
+    if (data.data) allJobs.push(...data.data);
   }
 
-  return NextResponse.json(data);
+  // Deduplicate by job_id
+  const seen = new Set();
+  const unique = allJobs.filter(j => !seen.has(j.job_id) && seen.add(j.job_id));
+
+  if (unique.length > 0) {
+    await redis.set('kayla_jobs', unique, { ex: 7200 });
+  }
+
+  return NextResponse.json({ data: unique });
 }
