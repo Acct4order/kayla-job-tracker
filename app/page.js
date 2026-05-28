@@ -370,4 +370,209 @@ export default function App() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
             <input value={newJob.title} onChange={e => setNewJob(p => ({ ...p, title: e.target.value }))} placeholder="Job Title *" style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
             <input value={newJob.company} onChange={e => setNewJob(p => ({ ...p, company: e.target.value }))} placeholder="Company *" style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
-            <input value={newJob.location} onChange={e => setNewJob(p => ({ ...p, location: e.target.value }))} placeholder="Location" style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8
+            <input value={newJob.location} onChange={e => setNewJob(p => ({ ...p, location: e.target.value }))} placeholder="Location" style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
+            <select value={newJob.workMode} onChange={e => setNewJob(p => ({ ...p, workMode: e.target.value }))} style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none', background: 'white' }}>
+              <option>Remote</option><option>Hybrid</option><option>On-site</option>
+            </select>
+          </div>
+          <textarea value={newJob.description} onChange={e => setNewJob(p => ({ ...p, description: e.target.value }))} placeholder="Paste full job description *" rows={4} style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box', marginBottom: 10 }} />
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setShowAdd(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+            <Btn onClick={addJob} disabled={!newJob.title || !newJob.company || !newJob.description}>Add to Board</Btn>
+          </div>
+        </div>
+      )}
+
+      {view === 'board' && (
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          <div style={{ flex: sel ? '0 0 54%' : 1, overflow: 'auto', padding: 16 }}>
+            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 10 }}>{filtered.length} positions - {applications.length} applied</div>
+            <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  {['Position', 'Company', 'Location', 'Mode', 'Salary', 'Posted', 'Score', ''].map(h => <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {filtered.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#94a3b8', fontSize: 13 }}>Loading jobs...</td></tr>}
+                  {filtered.map((j, i) => {
+                    const sc = ai[j.id]?.score, il = aiLoading[j.id], isSel = sel?.id === j.id, applied = isApplied(j.id);
+                    return (
+                      <tr key={j.id} onClick={() => { setSel(j); setTab('details'); }} style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', background: applied ? '#f0fdf4' : isSel ? '#eff6ff' : i % 2 ? '#fafafa' : 'white' }}>
+                        <td style={{ padding: '11px 14px' }}><div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ fontWeight: 700, fontSize: 13 }}>{j.title}</span>{applied && <span style={{ fontSize: 10, background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: 10, fontWeight: 700 }}>Applied</span>}</div><div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{j.source}</div></td>
+                        <td style={{ padding: '11px 14px', fontSize: 12, color: '#475569', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.company}</td>
+                        <td style={{ padding: '11px 14px', fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{j.location}</td>
+                        <td style={{ padding: '11px 14px' }}><span style={modeStyle(j.workMode)}>{j.workMode}</span></td>
+                        <td style={{ padding: '11px 14px', fontSize: 11, color: '#475569', whiteSpace: 'nowrap' }}>{j.salary}</td>
+                        <td style={{ padding: '11px 14px', fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap' }}>{timeAgo(j.posted)}</td>
+                        <td style={{ padding: '11px 14px' }}>{sc ? <span style={{ fontSize: 15, fontWeight: 800, color: scoreColor(sc.recruiter_score) }}>{sc.recruiter_score}%</span> : <span style={{ color: '#cbd5e1' }}>--</span>}</td>
+                        <td style={{ padding: '11px 10px' }}><button onClick={e => { e.stopPropagation(); setSel(j); scoreJob(j); }} disabled={!!il} style={{ padding: '4px 9px', borderRadius: 6, border: '1px solid #dbeafe', background: '#eff6ff', color: '#3b82f6', fontSize: 11, fontWeight: 700, cursor: il ? 'wait' : 'pointer' }}>{il === 'scoring' ? '...' : 'Score'}</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {sel && (
+            <div style={{ flex: '0 0 46%', background: 'white', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ padding: '16px 18px 0', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1, paddingRight: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><div style={{ fontWeight: 800, fontSize: 15 }}>{sel.title}</div>{isApplied(sel.id) && <span style={{ fontSize: 11, background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>Applied</span>}</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{sel.company} - {sel.location}</div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={modeStyle(sel.workMode)}>{sel.workMode}</span><span style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>{sel.salary}</span><span style={{ fontSize: 11, color: '#94a3b8' }}>Posted {timeAgo(sel.posted)}</span></div>
+                  </div>
+                  <button onClick={() => setSel(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8', lineHeight: 1 }}>x</button>
+                </div>
+                <div style={{ display: 'flex', marginTop: 14 }}>
+                  {[['details', 'Details'], ['score', 'AI Score'], ['resume', 'Resume']].map(([k, l]) => (
+                    <button key={k} onClick={() => setTab(k)} style={{ padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, fontWeight: tab === k ? 700 : 400, color: tab === k ? '#3b82f6' : '#64748b', borderBottom: tab === k ? '2px solid #3b82f6' : '2px solid transparent', marginBottom: -1 }}>{l}{k === 'score' && ai[sel.id]?.score ? ' *' : ''}{k === 'resume' && ai[sel.id]?.rewrite ? ' *' : ''}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ flex: 1, overflow: 'auto', padding: 18 }}>
+                {tab === 'details' && (
+                  <div>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                      <Btn onClick={() => scoreJob(sel)} disabled={!!aiLoading[sel.id]}>{aiLoading[sel.id] === 'scoring' ? 'Scoring...' : 'Score Resume'}</Btn>
+                      <Btn onClick={() => rewriteJob(sel)} disabled={!!aiLoading[sel.id]} color='#7c3aed'>{aiLoading[sel.id] === 'rewriting' ? 'Rewriting...' : 'Tailor Resume'}</Btn>
+                      <button onClick={() => handleApply(sel)} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: isApplied(sel.id) ? '#f0fdf4' : '#0f172a', color: isApplied(sel.id) ? '#166634' : 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{isApplied(sel.id) ? 'Applied - Apply Again' : 'Apply and Save'}</button>
+                    </div>
+                    {applyMsg && <div style={{ fontSize: 12, color: '#166534', background: '#f0fdf4', padding: '6px 12px', borderRadius: 8, marginBottom: 10, fontWeight: 600 }}>{applyMsg}</div>}
+                    <div style={{ fontSize: 13, lineHeight: 1.8, color: '#374151', whiteSpace: 'pre-wrap' }}>{sel.description}</div>
+                  </div>
+                )}
+                {tab === 'score' && (() => {
+                  const sc = ai[sel.id]?.score;
+                  if (!sc) return <div style={{ textAlign: 'center', padding: 48, color: '#94a3b8' }}><div style={{ fontSize: 14, marginBottom: 20, fontWeight: 600, color: '#64748b' }}>No analysis yet</div><Btn onClick={() => scoreJob(sel)} disabled={!!aiLoading[sel.id]}>{aiLoading[sel.id] === 'scoring' ? 'Analyzing...' : 'Score My Resume'}</Btn></div>;
+                  const [rbg, rbrd, rtxt] = recPal(sc.recommendation);
+                  return (
+                    <div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
+                        {[['ATS Match', sc.ats_score], ['Recruiter', sc.recruiter_score], ['CEO Score', sc.ceo_score]].map(([lbl, val]) => (
+                          <div key={lbl} style={{ textAlign: 'center', padding: '14px 8px', border: '1px solid #e2e8f0', borderRadius: 12, background: '#fafafa' }}>
+                            <div style={{ fontSize: 28, fontWeight: 900, color: scoreColor(val), lineHeight: 1 }}>{val}%</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4, fontWeight: 600, textTransform: 'uppercase' }}>{lbl}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid ' + rbrd, background: rbg, color: rtxt, fontWeight: 700, fontSize: 13, marginBottom: 12 }}>{sc.recommendation}</div>
+                      <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.75, fontStyle: 'italic', marginBottom: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8 }}>{sc.summary}</div>
+                      {Object.entries(sc.breakdown || {}).map(([k, { score, comment }]) => (
+                        <div key={k} style={{ marginBottom: 12 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><span style={{ fontSize: 12, color: '#475569', fontWeight: 600, textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</span><span style={{ fontSize: 12, fontWeight: 800, color: scoreColor(score) }}>{score}%</span></div>
+                          <div style={{ height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}><div style={{ height: '100%', width: score + '%', background: scoreColor(score), borderRadius: 3 }} /></div>
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{comment}</div>
+                        </div>
+                      ))}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16, marginBottom: 16 }}>
+                        <div style={{ padding: 12, background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}><div style={{ fontSize: 11, fontWeight: 800, color: '#166534', marginBottom: 8 }}>Strengths</div>{(sc.strengths || []).map((s, i) => <div key={i} style={{ fontSize: 12, color: '#166534', marginBottom: 5 }}>+ {s}</div>)}</div>
+                        <div style={{ padding: 12, background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca' }}><div style={{ fontSize: 11, fontWeight: 800, color: '#991b1b', marginBottom: 8 }}>Gaps</div>{(sc.gaps || []).map((g, i) => <div key={i} style={{ fontSize: 12, color: '#991b1b', marginBottom: 5 }}>- {g}</div>)}</div>
+                      </div>
+                      <Btn onClick={() => rewriteJob(sel)} disabled={!!aiLoading[sel.id]} color='#7c3aed' style={{ width: '100%', textAlign: 'center' }}>{aiLoading[sel.id] === 'rewriting' ? 'Tailoring...' : 'Generate Tailored Resume'}</Btn>
+                    </div>
+                  );
+                })()}
+                {tab === 'resume' && (() => {
+                  const rw = ai[sel.id]?.rewrite, ats = ai[sel.id]?.ats;
+                  if (!rw) return <div style={{ textAlign: 'center', padding: 48, color: '#94a3b8' }}><div style={{ fontSize: 14, marginBottom: 8, fontWeight: 600, color: '#64748b' }}>No tailored resume yet</div><Btn onClick={() => rewriteJob(sel)} disabled={!!aiLoading[sel.id]} color='#7c3aed'>{aiLoading[sel.id] === 'rewriting' ? 'Writing...' : 'Generate Tailored Resume'}</Btn></div>;
+                  return (
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700 }}>Tailored: {sel.title}</div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => copyText(rw)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: copyMsg ? '#f0fdf4' : 'white', fontSize: 11, cursor: 'pointer', color: copyMsg ? '#166534' : '#475569', fontWeight: 600 }}>{copyMsg || 'Copy'}</button>
+                          <button onClick={() => rewriteJob(sel)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', fontSize: 11, cursor: 'pointer', color: '#64748b', fontWeight: 600 }}>Redo</button>
+                        </div>
+                      </div>
+                      {ats && (
+                        <div style={{ border: '1.5px solid ' + (ats.passed ? '#86efac' : ats.score >= 80 ? '#fcd34d' : '#fca5a5'), borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+                          <div style={{ background: ats.passed ? '#f0fdf4' : ats.score >= 80 ? '#fffbeb' : '#fef2f2', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <div><div style={{ fontWeight: 800, fontSize: 13, color: ats.passed ? '#166534' : ats.score >= 80 ? '#92400e' : '#991b1b' }}>{ats.passed ? 'ATS READY' : ats.score >= 80 ? 'MINOR ISSUES' : 'ATS ISSUES'}</div><div style={{ fontSize: 11, color: ats.passed ? '#166534' : ats.score >= 80 ? '#92400e' : '#991b1b' }}>{ats.passCount}/{ats.total} passed - {ats.score}% ATS-safe</div></div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ width: 72, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}><div style={{ height: '100%', width: ats.score + '%', background: ats.passed ? '#16a34a' : ats.score >= 80 ? '#d97706' : '#dc2626', borderRadius: 3 }} /></div>
+                              <button onClick={() => setAtsExpanded(p => !p)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{atsExpanded ? 'Hide' : 'Details'}</button>
+                            </div>
+                          </div>
+                          {atsExpanded && (<div style={{ background: 'white', padding: '8px 14px 4px' }}>{ats.checks.map((chk, i) => (<div key={i} style={{ display: 'flex', gap: 10, padding: '7px 0', borderBottom: i < ats.checks.length - 1 ? '1px solid #f8fafc' : 'none', alignItems: 'flex-start' }}><span style={{ fontSize: 14, fontWeight: 800, color: chk.passed ? '#16a34a' : '#dc2626', flexShrink: 0, marginTop: 1 }}>{chk.passed ? 'v' : 'x'}</span><div><div style={{ fontSize: 12, fontWeight: 600 }}>{chk.label}</div><div style={{ fontSize: 11, color: chk.passed ? '#64748b' : '#dc2626', marginTop: 1, lineHeight: 1.4 }}>{chk.note}</div></div></div>))}</div>)}
+                        </div>
+                      )}
+                      <div style={{ background: '#1c3678', borderRadius: 12, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                        <div><div style={{ color: 'white', fontWeight: 700, fontSize: 13, marginBottom: 2 }}>Download Resume</div><div style={{ color: '#93c5fd', fontSize: 11 }}>Professional format, ready to send</div></div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => generatePDF(rw, sel, setDlPDF)} disabled={dlPDF} style={{ padding: '8px 16px', borderRadius: 8, border: '2px solid white', background: 'white', color: '#1c3678', fontWeight: 700, fontSize: 12, cursor: dlPDF ? 'wait' : 'pointer', opacity: dlPDF ? 0.7 : 1 }}>{dlPDF ? 'Generating...' : 'PDF' + (ats?.passed ? ' (ATS OK)' : '')}</button>
+                          <button onClick={() => generateWord(rw, sel)} style={{ padding: '8px 16px', borderRadius: 8, border: '2px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.12)', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{'Word' + (ats?.passed ? ' (ATS OK)' : '')}</button>
+                        </div>
+                      </div>
+                      <div style={{ background: '#fafafa', border: '1px solid #e2e8f0', borderRadius: 10, padding: 16, fontSize: 12, lineHeight: 1.85, color: '#1e293b', whiteSpace: 'pre-wrap', fontFamily: 'ui-monospace,monospace', maxHeight: 380, overflow: 'auto' }}>{rw}</div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {view === 'history' && (
+        <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
+            {[['Total Applied', applications.length], ['Avg Score', avgScore ? avgScore + '%' : '--'], ['ATS Ready', applications.filter(a => a.atsCheckPassed).length], ['With Resume', applications.filter(a => a.resume).length]].map(([lbl, val]) => (
+              <div key={lbl} style={{ background: 'white', borderRadius: 12, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>{val}</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{lbl}</div>
+              </div>
+            ))}
+          </div>
+          {applications.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 60, color: '#94a3b8', background: 'white', borderRadius: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#64748b', marginBottom: 8 }}>No applications yet</div>
+              <Btn onClick={() => setView('board')}>Browse Jobs</Btn>
+            </div>
+          ) : (
+            <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Position', 'Company', 'Mode', 'Applied', 'Score', 'ATS', 'Resume', ''].map(h => <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {applications.map((a, i) => {
+                    const isH = histSel?.id === a.id;
+                    return (
+                      <React.Fragment key={a.id}>
+                        <tr style={{ borderBottom: isH ? 'none' : '1px solid #f1f5f9', background: isH ? '#eff6ff' : i % 2 ? '#fafafa' : 'white', cursor: 'pointer' }} onClick={() => setHistSel(isH ? null : a)}>
+                          <td style={{ padding: '12px 16px' }}><div style={{ fontWeight: 700, fontSize: 13 }}>{a.title}</div><div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>{a.source}</div></td>
+                          <td style={{ padding: '12px 16px', fontSize: 12, color: '#475569', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.company}</td>
+                          <td style={{ padding: '12px 16px' }}><span style={modeStyle(a.workMode)}>{a.workMode}</span></td>
+                          <td style={{ padding: '12px 16px', fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{fmtDate(a.appliedAt)}</td>
+                          <td style={{ padding: '12px 16px' }}>{a.recruiterScore ? <span style={{ fontSize: 14, fontWeight: 800, color: scoreColor(a.recruiterScore) }}>{a.recruiterScore}%</span> : <span style={{ color: '#cbd5e1' }}>--</span>}</td>
+                          <td style={{ padding: '12px 16px' }}>{a.atsCheckPassed ? <span style={{ color: '#16a34a', fontWeight: 800 }}>OK</span> : <span style={{ color: '#94a3b8' }}>--</span>}</td>
+                          <td style={{ padding: '12px 16px' }}>{a.resume ? <span style={{ color: '#3b82f6', fontSize: 12, fontWeight: 600 }}>{isH ? 'Hide' : 'View'}</span> : <span style={{ color: '#cbd5e1', fontSize: 11 }}>None</span>}</td>
+                          <td style={{ padding: '12px 12px' }}><button onClick={e => { e.stopPropagation(); deleteApp(a.id); }} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #fee2e2', background: '#fef2f2', color: '#dc2626', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>Del</button></td>
+                        </tr>
+                        {isH && a.resume && (
+                          <tr><td colSpan={8} style={{ padding: '0 16px 16px', background: '#eff6ff', borderBottom: '1px solid #e2e8f0' }}>
+                            <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e2e8f0', padding: 16 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                                <div><div style={{ fontWeight: 700, fontSize: 13 }}>{a.title} at {a.company}</div><div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Applied {fmtDate(a.appliedAt)}{a.atsCheckPassed ? ' - ATS Ready' : ''}</div></div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                  <button onClick={() => { navigator.clipboard.writeText(a.resume); setHistCopy('Copied!'); setTimeout(() => setHistCopy(''), 2000); }} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: histCopy ? '#f0fdf4' : 'white', fontSize: 11, cursor: 'pointer', color: histCopy ? '#166534' : '#475569', fontWeight: 600 }}>{histCopy || 'Copy'}</button>
+                                  <button onClick={() => generatePDF(a.resume, a, setHistDlPDF)} disabled={histDlPDF} style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: '#1c3678', color: 'white', fontSize: 11, cursor: histDlPDF ? 'wait' : 'pointer', fontWeight: 600 }}>{histDlPDF ? '...' : 'PDF'}</button>
+                                  <button onClick={() => generateWord(a.resume, a)} style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: '#475569', color: 'white', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>Word</button>
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 11, lineHeight: 1.8, color: '#374151', whiteSpace: 'pre-wrap', fontFamily: 'ui-monospace,monospace', maxHeight: 320, overflow: 'auto', background: '#fafafa', padding: 12, borderRadius: 8 }}>{a.resume}</div>
+                            </div>
+                          </td></tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
