@@ -113,7 +113,9 @@ const getLineType = (line, lc) => {
   const hasManyPipes = pipeCount > 3;
   if (!hasManyPipes && (/\d{4}/.test(line) || pipeCount >= 1 || COKS.some(k => line.indexOf(k) >= 0))) return 'company';
   const ws = line.split(' ');
-  if (ws.length <= 7 && ws.filter(w => w.length > 3).every(w => w[0] === w[0]?.toUpperCase()) && lc > 3) return 'jobtitle';
+ const titleWords = ws.filter(w => w.length > 3);
+const mostlyTitleCase = titleWords.length === 0 || (titleWords.filter(w => w[0] === w[0]?.toUpperCase()).length / titleWords.length) >= 0.75;
+if (ws.length <= 9 && mostlyTitleCase && lc > 3) return 'jobtitle';
   return 'body';
 };
 
