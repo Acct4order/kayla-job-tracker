@@ -108,7 +108,10 @@ const getLineType = (line, lc) => {
   const isShortCaps = line === line.toUpperCase() && line.length > 4 && line.split(' ').length <= 6 && line.indexOf('-') < 0 && (line.match(/\|/g) || []).length === 0 && !/^\d/.test(line);
   if (isKnown || isShortCaps) return 'section';
   if (line.startsWith('-') || line.startsWith('*')) return 'bullet';
-  if (/\d{4}/.test(line) || (line.match(/\|/g) || []).length >= 1 || COKS.some(k => line.indexOf(k) >= 0)) return 'company';
+  // Only treat as company if pipes are few (skills lines have many pipes)
+  const pipeCount = (line.match(/\|/g) || []).length;
+  const hasManyPipes = pipeCount > 3;
+  if (!hasManyPipes && (/\d{4}/.test(line) || pipeCount >= 1 || COKS.some(k => line.indexOf(k) >= 0))) return 'company';
   const ws = line.split(' ');
   if (ws.length <= 7 && ws.filter(w => w.length > 3).every(w => w[0] === w[0]?.toUpperCase()) && lc > 3) return 'jobtitle';
   return 'body';
@@ -173,7 +176,7 @@ const generatePDF = async (resumeText, job, setDl) => {
           y += mainW.length * 4.3 + 2;
         } else {
           const wrp = doc.splitTextToSize(line, uw);
-          doc.text(wrp, ml, y); y += wrp.length * 4.3 + 2;
+          doc.text(line, ml, y, { maxWidth: uw }); y += wrp.length * 4.3 + 2;
         }
         doc.setTextColor(...INK);
       } else if (t === 'jobtitle') {
@@ -181,10 +184,15 @@ const generatePDF = async (resumeText, job, setDl) => {
         doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...INK);
         doc.text(line, ml, y); y += 5.5;
       } else {
+        // Body text — fix ALL CAPS to sentence case (not title case)
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-        const display = (line === line.toUpperCase() && line.split(' ').length > 4) ? toTitle(line) : line;
+        const isAllCaps = line === line.toUpperCase() && line.split(' ').length > 4;
+        const display = isAllCaps ? line.charAt(0).toUpperCase() + line.slice(1).toLowerCase() : line;
         const wrp = doc.splitTextToSize(display, uw);
-        chk(wrp.length * 4.8); doc.text(wrp, ml, y); y += wrp.length * 4.8 + 1;
+        chk(wrp.length * 4.8);
+        // Use maxWidth for reliable wrapping (fixes truncation)
+        doc.text(display, ml, y, { maxWidth: uw });
+        y += wrp.length * 4.8 + 1;
       }
     }
     const pages = doc.getNumberOfPages();
