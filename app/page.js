@@ -141,7 +141,7 @@ const generatePDF = async (resumeText, job, setDl) => {
         doc.setFillColor(...GOLD); doc.rect(ml, y-5, 2.5, 7, 'F');
         doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...NAVY);
         doc.text(toTitle(line), ml+6, y); y += 3.5;
-        doc.setDrawColor(...RULE); doc.setLineWidth(0.4); doc.line(ml+6, y, W-mr, y);
+        doc.setDrawColor(...RULE); doc.setLineWidth(0.4); doc.line(ml, y, W-mr, y);
         y += 6; doc.setTextColor(...INK);
       } else if (t === 'bullet') {
         const bt = line.replace(/^[-*]\s*/,'');
