@@ -146,7 +146,7 @@ const generatePDF = async (resumeText, job, setDl) => {
       } else if (t === 'bullet') {
         const bt = line.replace(/^[-*]\s*/,'');
         doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-        const wrp = ww(bt, 78); chk(wrp.length*4.8+1);
+        const wrp = ww(bt, 90); chk(wrp.length*4.8+1);
         doc.setFillColor(...GOLD); doc.circle(ml+2.2, y-1.6, 0.75, 'F');
         put(wrp, ml+7, y, 4.8); y += wrp.length*4.8+0.8;
       } else if (t === 'company') {
@@ -161,7 +161,7 @@ const generatePDF = async (resumeText, job, setDl) => {
           doc.setFont('helvetica','italic'); doc.setTextColor(...GOLD);
           doc.text(last, W-mr, y, {align:'right'}); y += mainW.length*4.3+2;
         } else {
-          const wrp = ww(line, 85); put(wrp, ml, y, 4.3); y += wrp.length*4.3+2;
+          const wrp = ww(line, 95); put(wrp, ml, y, 4.3); y += wrp.length*4.3+2;
         }
         doc.setTextColor(...INK);
       } else if (t === 'jobtitle') {
@@ -169,7 +169,7 @@ const generatePDF = async (resumeText, job, setDl) => {
         doc.text(line, ml, y); y += 5.5;
       } else {
         doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-        const wrp = ww(sentCase(line), 82); chk(wrp.length*4.8);
+        const wrp = ww(sentCase(line), 95); chk(wrp.length*4.8);
         put(wrp, ml, y, 4.8); y += wrp.length*4.8+1;
       }
     }
