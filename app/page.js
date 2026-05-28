@@ -91,6 +91,118 @@ const generatePDF = async (resumeText, job, setDl) => {
   try {
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210, H = 297, ml = 22, mr = 22, mt = 24, mb = 22;
+    let y = mt;
+    const INK=[26,32,44],NAVY=[28,54,120],MUTED=[80,96,115],LGRAY=[160,174,192],RULE=[210,218,228],GOLD=[180,148,80];
+    const newPage = () => { doc.addPage(); y = mt; };
+    const chk = h => { if (y + h > H - mb) newPage(); };
+    const toTitle = s => s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+    // Character-based word wrap — never relies on jsPDF font metrics, always works
+    const ww = (text, maxChars) => {
+      if (!text) return [''];
+      const words = text.split(' ');
+      const result = [];
+      let cur = '';
+      for (const w of words) {
+        const test = cur ? cur + ' ' + w : w;
+        if (test.length <= maxChars) { cur = test; }
+        else { if (cur) result.push(cur); cur = w; }
+      }
+      if (cur) result.push(cur);
+      return result.length ? result : [text];
+    };
+
+    // Render each line at exact y — no jsPDF array rendering bugs
+    const put = (arr, x, sy, lh) => arr.forEach((l, i) => doc.text(l, x, sy + i * lh));
+
+    // Convert ALL CAPS or Title Case body text to sentence case
+    const sentCase = line => {
+      const words = line.split(' ').filter(w => w.length > 3);
+      const isAllCaps = line === line.toUpperCase() && words.length > 3;
+      const titleCount = words.filter(w => w[0] === w[0]?.toUpperCase() && w.slice(1) === w.slice(1).toLowerCase()).length;
+      const isTitleCase = words.length > 2 && titleCount / words.length > 0.6;
+      if (isAllCaps || isTitleCase) return line.toLowerCase().replace(/^./, c => c.toUpperCase());
+      return line;
+    };
+
+    const lines = resumeText.split('\n');
+    let lc = 0;
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) { y += 2; continue; }
+      lc++;
+      const t = getLineType(line, lc);
+
+      if (t === 'name') {
+        chk(22);
+        doc.setFont('helvetica','bold'); doc.setFontSize(28); doc.setTextColor(...NAVY);
+        doc.text(line, W/2, y, {align:'center'}); y += 9;
+        doc.setDrawColor(...GOLD); doc.setLineWidth(1.2); doc.line(ml,y,W-mr,y);
+        doc.setDrawColor(...NAVY); doc.setLineWidth(0.3); doc.line(ml,y+1.8,W-mr,y+1.8);
+        y += 7;
+      } else if (t === 'contact') {
+        chk(7);
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
+        doc.text(line, W/2, y, {align:'center'}); y += 8; doc.setTextColor(...INK);
+      } else if (t === 'section') {
+        chk(16); y += 7;
+        doc.setFillColor(...GOLD); doc.rect(ml, y-5, 2.5, 7, 'F');
+        doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...NAVY);
+        doc.text(toTitle(line), ml+6, y); y += 3.5;
+        doc.setDrawColor(...RULE); doc.setLineWidth(0.4); doc.line(ml+6, y, W-mr, y);
+        y += 6; doc.setTextColor(...INK);
+      } else if (t === 'bullet') {
+        const bt = line.replace(/^[-*]\s*/,'');
+        doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+        const wrp = ww(bt, 78);
+        chk(wrp.length*4.8+1);
+        doc.setFillColor(...GOLD); doc.circle(ml+2.2, y-1.6, 0.75, 'F');
+        put(wrp, ml+7, y, 4.8); y += wrp.length*4.8+0.8;
+      } else if (t === 'company') {
+        chk(9);
+        const parts = line.split('|').map(p => p.trim());
+        const last = parts[parts.length-1];
+        const hasDate = /\d{4}/.test(last) || /present/i.test(last);
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
+        if (parts.length > 1 && hasDate) {
+          const mainW = ww(parts.slice(0,-1).join('  /  '), 68);
+          put(mainW, ml, y, 4.3);
+          doc.setFont('helvetica','italic'); doc.setTextColor(...GOLD);
+          doc.text(last, W-mr, y, {align:'right'});
+          y += mainW.length*4.3+2;
+        } else {
+          const wrp = ww(line, 85); put(wrp, ml, y, 4.3); y += wrp.length*4.3+2;
+        }
+        doc.setTextColor(...INK);
+      } else if (t === 'jobtitle') {
+        chk(10); y += 3;
+        doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...INK);
+        doc.text(line, ml, y); y += 5.5;
+      } else {
+        doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+        const wrp = ww(sentCase(line), 82);
+        chk(wrp.length*4.8); put(wrp, ml, y, 4.8); y += wrp.length*4.8+1;
+      }
+    }
+
+    const pages = doc.getNumberOfPages();
+    if (pages > 1) {
+      for (let p = 1; p <= pages; p++) {
+        doc.setPage(p);
+        doc.setDrawColor(...RULE); doc.setLineWidth(0.3); doc.line(ml,H-mb+2,W-mr,H-mb+2);
+        doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...LGRAY);
+        doc.text(p+' / '+pages, W-mr, H-mb+6, {align:'right'});
+      }
+    }
+    doc.save('Kayla_Kwok_'+job.title.replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');
+  } catch(e) { alert('PDF failed: '+e.message); }
+  finally { setDl(false); }
+};
+  setDl(true);
+  try {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = 210, H = 297, ml = 22, mr = 22, mt = 24, mb = 22, uw = 166;
     let y = mt;
     const INK = [26,32,44], NAVY = [28,54,120], MUTED = [80,96,115], LGRAY = [160,174,192], RULE = [210,218,228], GOLD = [180,148,80];
