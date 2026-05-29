@@ -10,29 +10,33 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Try to return cached jobs first
-    const cached = await redis.get('kayla_jobs');
+    const [cached, alertJobs] = await Promise.all([
+      redis.get('kayla_jobs'),
+      redis.get('kayla_alert_jobs'),
+    ]);
+
     if (cached) {
-      return NextResponse.json({ data: cached, source: 'cache' });
+      // Merge JSearch jobs + email alert jobs, alert jobs go first
+      const merged = [...(alertJobs || []), ...cached];
+      return NextResponse.json({ data: merged, source: 'cache' });
     }
 
-    // No cache — fetch fresh from JSearch
-    return await fetchAndStore();
+    return await fetchAndStore(alertJobs || []);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 export async function POST() {
-  // Called by Zapier webhook — always fetch fresh
   try {
-    return await fetchAndStore();
+    const alertJobs = (await redis.get('kayla_alert_jobs')) || [];
+    return await fetchAndStore(alertJobs);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-async function fetchAndStore() {
+async function fetchAndStore(alertJobs = []) {
   const apiKey = process.env.RAPIDAPI_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'RAPIDAPI_KEY not set' }, { status: 500 });
@@ -61,7 +65,6 @@ async function fetchAndStore() {
     if (data.data) allJobs.push(...data.data);
   }
 
-  // Deduplicate by job_id
   const seen = new Set();
   const unique = allJobs.filter(j => !seen.has(j.job_id) && seen.add(j.job_id));
 
@@ -69,5 +72,7 @@ async function fetchAndStore() {
     await redis.set('kayla_jobs', unique, { ex: 7200 });
   }
 
-  return NextResponse.json({ data: unique });
+  // Always merge with alert jobs in response
+  const merged = [...alertJobs, ...unique];
+  return NextResponse.json({ data: merged });
 }
