@@ -110,6 +110,23 @@ const generatePDF = async (resumeText, job, setDl) => {
     const put = (arr, x, sy, lh) => arr.forEach((l, i) => doc.text(l, x, sy + i * lh));
     const split = (text, w) => { const r = doc.splitTextToSize(text, w); return Array.isArray(r) ? r : [text]; };
 
+    // Justified text helpers
+    const justifyLine = (text, x, sy, maxWidth) => {
+      const words = text.split(' ');
+      if (words.length <= 1) { doc.text(text, x, sy); return; }
+      const totalWordWidth = words.reduce((sum, w) => sum + doc.getTextWidth(w), 0);
+      const gap = (maxWidth - totalWordWidth) / (words.length - 1);
+      let cx = x;
+      words.forEach(word => { doc.text(word, cx, sy); cx += doc.getTextWidth(word) + gap; });
+    };
+    const putJustified = (arr, x, sy, lh, maxWidth) => {
+      arr.forEach((line, i) => {
+        const isLast = i === arr.length - 1;
+        if (isLast) doc.text(line, x, sy + i * lh);
+        else justifyLine(line, x, sy + i * lh, maxWidth);
+      });
+    };
+
     const lines = resumeText.split('\n');
     let lc = 0;
     for (const raw of lines) {
@@ -141,7 +158,7 @@ const generatePDF = async (resumeText, job, setDl) => {
         doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...INK);
         const wrp = split(bt, uw-6); chk(wrp.length*4.5+1);
         doc.setFillColor(...GOLD); doc.circle(ml+2, y-1.5, 0.7, 'F');
-        put(wrp, ml+6, y, 4.5); y += wrp.length*4.5+0.5;
+        putJustified(wrp, ml+6, y, 4.5, uw-6); y += wrp.length*4.5+0.5;
 
       } else if (t === 'company') {
         chk(8);
@@ -171,7 +188,7 @@ const generatePDF = async (resumeText, job, setDl) => {
         const hasManyPipes = (line.match(/\|/g)||[]).length > 3;
         const display = hasManyPipes ? line : sentCase(line);
         const wrp = split(display, uw); chk(wrp.length*4.5);
-        put(wrp, ml, y, 4.5); y += wrp.length*4.5+0.8;
+        putJustified(wrp, ml, y, 4.5, uw); y += wrp.length*4.5+0.8;
       }
     }
 
@@ -198,10 +215,10 @@ const generateWord = (resumeText, job) => {
     if (t === 'name') html += "<p style='font-family:Calibri,sans-serif;font-size:26pt;font-weight:bold;color:#1c3678;text-align:center;margin:0 0 2pt'>" + line + "</p><div style='border-bottom:2pt solid #b4944f;margin:2pt 0 1pt'></div><div style='border-bottom:0.5pt solid #1c3678;margin:0 0 4pt'></div>";
     else if (t === 'contact') html += "<p style='font-family:Calibri,sans-serif;font-size:9pt;color:#506070;text-align:center;margin:0 0 12pt'>" + line + "</p>";
     else if (t === 'section') { const title = toTitle(line); html += "<table style='width:100%;margin:14pt 0 5pt'><tr><td style='width:3pt;background:#b4944f'>&nbsp;</td><td style='padding-left:6pt;border-bottom:0.5pt solid #d2dae4;padding-bottom:3pt'><span style='font-family:Calibri,sans-serif;font-size:10.5pt;font-weight:bold;color:#1c3678'>" + title + "</span></td></tr></table>"; }
-    else if (t === 'bullet') { const bt = line.replace(/^[-*]\s*/, ''); html += "<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0 2pt 16pt;text-indent:-10pt;color:#1a202c;line-height:1.4'>&#9679;&nbsp;" + bt + "</p>"; }
+    else if (t === 'bullet') { const bt = line.replace(/^[-*]\s*/, ''); html += "<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0 2pt 16pt;text-indent:-10pt;color:#1a202c;line-height:1.4;text-align:justify'>&#9679;&nbsp;" + bt + "</p>"; }
     else if (t === 'company') html += "<p style='font-family:Calibri,sans-serif;font-size:9pt;font-style:italic;color:#506070;margin:1pt 0 3pt'>" + line + "</p>";
     else if (t === 'jobtitle') html += "<p style='font-family:Calibri,sans-serif;font-size:11pt;font-weight:bold;color:#1a202c;margin:10pt 0 1pt'>" + line + "</p>";
-    else { const hasManyPipes = (line.match(/\|/g)||[]).length > 3; html += "<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0;color:#1a202c;line-height:1.5'>" + (hasManyPipes ? line : sentCase(line)) + "</p>"; }
+    else { const hasManyPipes = (line.match(/\|/g)||[]).length > 3; html += "<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0;color:#1a202c;line-height:1.5;text-align:justify'>" + (hasManyPipes ? line : sentCase(line)) + "</p>"; }
   }
   const blob = new Blob(["<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='margin:1in;max-width:7in'>" + html + "</body></html>"], { type: 'application/msword' });
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'Kayla_Kwok_' + job.title.replace(/[^a-zA-Z0-9]/g, '_') + '.doc'; a.click(); URL.revokeObjectURL(url);
