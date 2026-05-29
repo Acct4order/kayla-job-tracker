@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 
 const RESUME = `KAYLA KWOK
-Markham, ON | (437) 362-9928 | kaylakwok.km@gmail.com
+Ontario, Canada | (437) 362-9928 | kaylakwok.km@gmail.com
 
 PROFESSIONAL SUMMARY
 Over ten years of public sector experience across governance, healthcare operations, and people management. Running secretariats for 100+ government committees, keeping 12 public health clinics operational, and leading teams of 400+ employees. Holds an LLB and a CESGA in corporate governance and ESG reporting. Settled in Markham, open to governance, EA, or senior administration roles in Ontario. Fluent in English, Cantonese, and Mandarin.
@@ -110,7 +110,6 @@ const generatePDF = async (resumeText, job, setDl) => {
     const put = (arr, x, sy, lh) => arr.forEach((l, i) => doc.text(l, x, sy + i * lh));
     const split = (text, w) => { const r = doc.splitTextToSize(text, w); return Array.isArray(r) ? r : [text]; };
 
-    // Justified text helpers
     const justifyLine = (text, x, sy, maxWidth) => {
       const words = text.split(' ');
       if (words.length <= 1) { doc.text(text, x, sy); return; }
@@ -140,11 +139,9 @@ const generatePDF = async (resumeText, job, setDl) => {
         doc.text(line, W/2, y, {align:'center'}); y += 8;
         doc.setDrawColor(...GOLD); doc.setLineWidth(1.2); doc.line(ml,y,W-mr,y);
         doc.setDrawColor(...NAVY); doc.setLineWidth(0.3); doc.line(ml,y+1.8,W-mr,y+1.8); y += 6;
-
       } else if (t === 'contact') {
         chk(6); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
         doc.text(line, W/2, y, {align:'center'}); y += 7; doc.setTextColor(...INK);
-
       } else if (t === 'section') {
         chk(14); y += 5;
         doc.setFillColor(...GOLD); doc.rect(ml, y-4.5, 2.5, 6.5, 'F');
@@ -152,14 +149,12 @@ const generatePDF = async (resumeText, job, setDl) => {
         doc.text(toTitle(line), ml+5, y); y += 3;
         doc.setDrawColor(...RULE); doc.setLineWidth(0.4); doc.line(ml, y, W-mr, y);
         y += 5; doc.setTextColor(...INK);
-
       } else if (t === 'bullet') {
         const bt = line.replace(/^[-*]\s*/,'');
         doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...INK);
         const wrp = split(bt, uw-6); chk(wrp.length*4.5+1);
         doc.setFillColor(...GOLD); doc.circle(ml+2, y-1.5, 0.7, 'F');
         putJustified(wrp, ml+6, y, 4.5, uw-6); y += wrp.length*4.5+0.5;
-
       } else if (t === 'company') {
         chk(8);
         const parts = line.split('|').map(p => p.trim());
@@ -177,12 +172,10 @@ const generatePDF = async (resumeText, job, setDl) => {
           const wrp = split(line, uw); put(wrp, ml, y, 4.2); y += wrp.length*4.2+1.5;
         }
         doc.setTextColor(...INK);
-
       } else if (t === 'jobtitle') {
         chk(9); y += 2;
         doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...INK);
         doc.text(line, ml, y); y += 5;
-
       } else {
         doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...INK);
         const hasManyPipes = (line.match(/\|/g)||[]).length > 3;
@@ -291,17 +284,18 @@ export default function App() {
       if (d.data && d.data.length > 0) {
         const seen = new Set();
         const incoming = d.data
-  .filter(j => {
-    const id = j.job_id || j.id;
-    return !seen.has(id) && seen.add(id);
-  })
-  .map(j => j.source ? j : txJob(j)) // alert jobs already formatted, only transform JSearch jobs
-  .sort((a, b) => new Date(b.posted) - new Date(a.posted));
+          .filter(j => {
+            const id = j.job_id || j.id;
+            return !seen.has(id) && seen.add(id);
+          })
+          .map(j => j.source ? j : txJob(j))
+          .filter(j => j.title)
+          .sort((a, b) => new Date(b.posted) - new Date(a.posted));
         setJobs(incoming); setLastUpdated(new Date());
-        setStatus('Loaded '+incoming.length+' live jobs', true);
-      } else if (d.error) { setStatus('Error: '+d.error, false); }
+        setStatus('Loaded ' + incoming.length + ' live jobs', true);
+      } else if (d.error) { setStatus('Error: ' + d.error, false); }
       else { setStatus('No jobs returned.', false); }
-    } catch (e) { setStatus('Fetch failed: '+e.message, false); }
+    } catch (e) { setStatus('Fetch failed: ' + e.message, false); }
     finally { setLoading(false); }
   }, []);
 
