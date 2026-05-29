@@ -290,7 +290,13 @@ export default function App() {
       const r = await fetch('/api/jobs'); const d = await r.json();
       if (d.data && d.data.length > 0) {
         const seen = new Set();
-        const incoming = d.data.filter(j => !seen.has(j.job_id) && seen.add(j.job_id)).map(txJob).sort((a,b) => new Date(b.posted)-new Date(a.posted));
+        const incoming = d.data
+  .filter(j => {
+    const id = j.job_id || j.id;
+    return !seen.has(id) && seen.add(id);
+  })
+  .map(j => j.source ? j : txJob(j)) // alert jobs already formatted, only transform JSearch jobs
+  .sort((a, b) => new Date(b.posted) - new Date(a.posted));
         setJobs(incoming); setLastUpdated(new Date());
         setStatus('Loaded '+incoming.length+' live jobs', true);
       } else if (d.error) { setStatus('Error: '+d.error, false); }
