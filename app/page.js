@@ -748,7 +748,7 @@ export default function App() {
                           <td style={{padding:'12px 16px'}}>{a.recruiterScore?<span style={{fontSize:14,fontWeight:800,color:scoreColor(a.recruiterScore)}}>{a.recruiterScore}%</span>:<span style={{color:'#cbd5e1'}}>--</span>}</td>
                           <td style={{padding:'12px 16px'}}>{a.atsCheckPassed?<span style={{color:'#16a34a',fontWeight:800}}>OK</span>:<span style={{color:'#94a3b8'}}>--</span>}</td>
                           <td style={{padding:'12px 16px'}}>
-                            <div style={{display:'flex',gap:4'}}>
+                            <div style={{display:'flex',gap:4}}>
                               {a.resume&&<span style={{fontSize:10,background:'#eff6ff',color:'#3b82f6',padding:'2px 7px',borderRadius:8,fontWeight:700}}>CV</span>}
                               {a.coverLetter&&<span style={{fontSize:10,background:'#f0fdfa',color:'#0d9488',padding:'2px 7px',borderRadius:8,fontWeight:700}}>CL</span>}
                               {!a.resume&&!a.coverLetter&&<span style={{color:'#cbd5e1',fontSize:11}}>None</span>}
