@@ -252,8 +252,12 @@ const generateCoverLetterPDF = async (clText, job, setDl) => {
     doc.text(new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }), ml, y);
     y += 10;
 
-    // Body paragraphs
-    const paragraphs = clText.split('\n').map(l => l.trim()).filter(Boolean);
+    // Body paragraphs — strip name/contact lines the AI may have included (already in the header bar)
+    const isHeaderLine = l =>
+      /^kayla\s+kwok$/i.test(l) ||
+      (l.includes('@') && l.includes('|')) ||
+      (/ontario/i.test(l) && /\d{3}/.test(l));
+    const paragraphs = clText.split('\n').map(l => l.trim()).filter(l => l && !isHeaderLine(l));
     for (const para of paragraphs) {
       // Detect sign-off lines (short, ends with name)
       const isSignOff = para.length < 60 && (
@@ -321,7 +325,11 @@ const generateWord = (resumeText, job) => {
 // Cover letter Word export — plain professional letter
 const generateCoverLetterWord = (clText, job) => {
   const date = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
-  const paragraphs = clText.split('\n').map(l => l.trim()).filter(Boolean);
+  const isHeaderLine = l =>
+    /^kayla\s+kwok$/i.test(l) ||
+    (l.includes('@') && l.includes('|')) ||
+    (/ontario/i.test(l) && /\d{3}/.test(l));
+  const paragraphs = clText.split('\n').map(l => l.trim()).filter(l => l && !isHeaderLine(l));
   let body = `<p style='font-family:Calibri,sans-serif;font-size:10pt;color:#1a202c;margin:0 0 12pt'>${date}</p>`;
   for (const para of paragraphs) {
     const isSignOff = para.length < 60 && (/^(sincerely|regards|best|yours|thank)/i.test(para) || para === 'Kayla Kwok' || para === 'Kayla');
