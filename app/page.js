@@ -199,6 +199,107 @@ const generatePDF = async (resumeText, job, setDl) => {
   finally { setDl(false); }
 };
 
+// Cover letter PDF — clean letter format, no resume styling
+const generateCoverLetterPDF = async (clText, job, setDl) => {
+  setDl(true);
+  try {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210, H = 297, ml = 25, mr = 25, mt = 30, mb = 25;
+    const uw = W - ml - mr;
+    const NAVY = [28, 54, 120], GOLD = [180, 148, 80], INK = [26, 32, 44], MUTED = [80, 96, 115];
+    let y = mt;
+
+    const split = (text, w) => { const r = doc.splitTextToSize(text, w); return Array.isArray(r) ? r : [text]; };
+    const justifyLine = (text, x, sy, maxWidth) => {
+      const words = text.split(' ');
+      if (words.length <= 1) { doc.text(text, x, sy); return; }
+      const totalWordWidth = words.reduce((sum, w) => sum + doc.getTextWidth(w), 0);
+      const gap = (maxWidth - totalWordWidth) / (words.length - 1);
+      let cx = x;
+      words.forEach(word => { doc.text(word, cx, sy); cx += doc.getTextWidth(word) + gap; });
+    };
+    const putJustified = (arr, x, sy, lh, maxWidth) => {
+      arr.forEach((line, i) => {
+        const isLast = i === arr.length - 1;
+        if (isLast) doc.text(line, x, sy + i * lh);
+        else justifyLine(line, x, sy + i * lh, maxWidth);
+      });
+    };
+
+    // Header bar
+    doc.setFillColor(...NAVY);
+    doc.rect(0, 0, W, 18, 'F');
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(1.5);
+    doc.line(0, 18, W, 18);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.text('KAYLA KWOK', ml, 11);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(180, 200, 230);
+    doc.text('Ontario, Canada  |  (437) 362-9928  |  kaylakwok.km@gmail.com', W - mr, 11, { align: 'right' });
+
+    y = mt + 10;
+
+    // Date
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    doc.text(new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }), ml, y);
+    y += 10;
+
+    // Body paragraphs
+    const paragraphs = clText.split('\n').map(l => l.trim()).filter(Boolean);
+    for (const para of paragraphs) {
+      // Detect sign-off lines (short, ends with name)
+      const isSignOff = para.length < 60 && (
+        /^(sincerely|regards|best|yours|thank)/i.test(para) ||
+        para === 'Kayla Kwok' ||
+        para === 'Kayla'
+      );
+
+      if (isSignOff) {
+        y += 4;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        doc.setTextColor(...INK);
+        doc.text(para, ml, y);
+        y += 6;
+        continue;
+      }
+
+      // Salutation / "Dear Hiring Manager"
+      if (/^dear /i.test(para)) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        doc.setTextColor(...INK);
+        doc.text(para, ml, y);
+        y += 8;
+        continue;
+      }
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...INK);
+      const wrapped = split(para, uw);
+      putJustified(wrapped, ml, y, 5.2, uw);
+      y += wrapped.length * 5.2 + 5;
+    }
+
+    // Footer rule
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.5);
+    doc.line(ml, H - mb, W - mr, H - mb);
+
+    doc.save('Kayla_Kwok_CoverLetter_' + job.title.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf');
+  } catch (e) { alert('Cover letter PDF failed: ' + e.message); }
+  finally { setDl(false); }
+};
+
 const generateWord = (resumeText, job) => {
   const toTitle = s => s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
   const lines = resumeText.split('\n'); let html = '', lc = 0;
@@ -215,6 +316,24 @@ const generateWord = (resumeText, job) => {
   }
   const blob = new Blob(["<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='margin:1in;max-width:7in'>" + html + "</body></html>"], { type: 'application/msword' });
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'Kayla_Kwok_' + job.title.replace(/[^a-zA-Z0-9]/g, '_') + '.doc'; a.click(); URL.revokeObjectURL(url);
+};
+
+// Cover letter Word export — plain professional letter
+const generateCoverLetterWord = (clText, job) => {
+  const date = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+  const paragraphs = clText.split('\n').map(l => l.trim()).filter(Boolean);
+  let body = `<p style='font-family:Calibri,sans-serif;font-size:10pt;color:#1a202c;margin:0 0 12pt'>${date}</p>`;
+  for (const para of paragraphs) {
+    const isSignOff = para.length < 60 && (/^(sincerely|regards|best|yours|thank)/i.test(para) || para === 'Kayla Kwok' || para === 'Kayla');
+    if (isSignOff) {
+      body += `<p style='font-family:Calibri,sans-serif;font-size:10pt;color:#1a202c;margin:6pt 0 2pt'>${para}</p>`;
+    } else {
+      body += `<p style='font-family:Calibri,sans-serif;font-size:10pt;color:#1a202c;line-height:1.6;text-align:justify;margin:0 0 10pt'>${para}</p>`;
+    }
+  }
+  const header = `<table style='width:100%;margin-bottom:20pt;border-bottom:2pt solid #b4944f;padding-bottom:8pt'><tr><td><p style='font-family:Calibri,sans-serif;font-size:16pt;font-weight:bold;color:#1c3678;margin:0'>KAYLA KWOK</p></td><td style='text-align:right'><p style='font-family:Calibri,sans-serif;font-size:8.5pt;color:#506070;margin:0'>Ontario, Canada | (437) 362-9928 | kaylakwok.km@gmail.com</p></td></tr></table>`;
+  const blob = new Blob([`<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='margin:1in;max-width:6.5in'>${header}${body}</body></html>`], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'Kayla_Kwok_CoverLetter_' + job.title.replace(/[^a-zA-Z0-9]/g, '_') + '.doc'; a.click(); URL.revokeObjectURL(url);
 };
 
 const runATSCheck = text => {
@@ -264,7 +383,12 @@ export default function App() {
   const [histDlPDF, setHistDlPDF] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [newJob, setNewJob] = useState({ title: '', company: '', location: 'Markham, ON', workMode: 'Hybrid', salary: '', description: '', applyLink: '' });
-  const [usage, setUsage] = useState({ scores: 0, rewrites: 0 });
+  const [usage, setUsage] = useState({ scores: 0, rewrites: 0, coverLetters: 0 });
+  // Cover letter state
+  const [clCopyMsg, setClCopyMsg] = useState('');
+  const [clDlPDF, setClDlPDF] = useState(false);
+  const [histClCopy, setHistClCopy] = useState('');
+  const [histClDlPDF, setHistClDlPDF] = useState(false);
 
   useEffect(() => {
     setApplications(loadApps());
@@ -273,8 +397,8 @@ export default function App() {
 
   const setStatus = (msg, ok = true, ms = 5000) => { setStatusMsg(msg); setStatusOk(ok); if (ms) setTimeout(() => setStatusMsg(''), ms); };
   const isApplied = id => applications.some(a => a.id === id);
-  const trackUsage = type => { setUsage(prev => { const u = { ...prev, [type]: prev[type]+1 }; localStorage.setItem('kayla_usage', JSON.stringify(u)); return u; }); };
-  const estCost = () => ((usage.scores*0.01)+(usage.rewrites*0.03)).toFixed(2);
+  const trackUsage = type => { setUsage(prev => { const u = { ...prev, [type]: (prev[type]||0)+1 }; localStorage.setItem('kayla_usage', JSON.stringify(u)); return u; }); };
+  const estCost = () => (((usage.scores||0)*0.01)+((usage.rewrites||0)*0.03)+((usage.coverLetters||0)*0.02)).toFixed(2);
   const estRemaining = () => Math.max(0, 5-parseFloat(estCost())).toFixed(2);
 
   const fetchJobs = useCallback(async () => {
@@ -324,12 +448,34 @@ export default function App() {
     finally { setAiLoading(p => ({...p,[job.id]:null})); }
   };
 
+  const generateCoverLetter = async job => {
+    const resume = ai[job.id]?.rewrite || RESUME;
+    setAiLoading(p => ({...p,[job.id]:'cover'}));
+    try {
+      const r = await fetch('/api/cover-letter', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({job,resume}) });
+      const data = await r.json(); if (data.error) throw new Error(data.error);
+      setAi(p => ({...p,[job.id]:{...p[job.id],coverLetter:data.result}}));
+      trackUsage('coverLetters');
+    } catch(e) { alert('Cover letter failed: '+e.message); }
+    finally { setAiLoading(p => ({...p,[job.id]:null})); }
+  };
+
   const handleApply = async job => {
     const prev = applications.find(a => a.id === job.id);
     if (prev) { setApplyMsg('Already applied on '+fmtDate(prev.appliedAt)); setTimeout(()=>setApplyMsg(''),3000); }
     else {
       const aiData = ai[job.id]||{};
-      const entry = { id:job.id, title:job.title, company:job.company, location:job.location, workMode:job.workMode, salary:job.salary, source:job.source, posted:job.posted, applyLink:job.applyLink, appliedAt:new Date().toISOString(), resume:aiData.rewrite||'', recruiterScore:aiData.score?.recruiter_score||null, atsScore:aiData.score?.ats_score||null, atsCheckPassed:aiData.ats?.passed||false, recommendation:aiData.score?.recommendation||null };
+      const entry = {
+        id:job.id, title:job.title, company:job.company, location:job.location,
+        workMode:job.workMode, salary:job.salary, source:job.source, posted:job.posted,
+        applyLink:job.applyLink, appliedAt:new Date().toISOString(),
+        resume:aiData.rewrite||'',
+        coverLetter:aiData.coverLetter||'',
+        recruiterScore:aiData.score?.recruiter_score||null,
+        atsScore:aiData.score?.ats_score||null,
+        atsCheckPassed:aiData.ats?.passed||false,
+        recommendation:aiData.score?.recommendation||null,
+      };
       const updated = [entry,...applications]; setApplications(updated); saveApps(updated);
       setApplyMsg('Saved to Application History'); setTimeout(()=>setApplyMsg(''),3000);
     }
@@ -373,7 +519,7 @@ export default function App() {
         )}
       </div>
 
-      {(usage.scores>0||usage.rewrites>0)&&(
+      {(usage.scores>0||usage.rewrites>0||usage.coverLetters>0)&&(
         <div style={{background:'#0f172a',borderBottom:'1px solid #1e293b',padding:'5px 20px',display:'flex',alignItems:'center',gap:14,flexShrink:0}}>
           <div style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>API Credit</div>
           <div style={{flex:1,height:4,background:'#1e293b',borderRadius:2,overflow:'hidden'}}>
@@ -381,7 +527,7 @@ export default function App() {
           </div>
           <div style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>
             <span style={{color:budgetPct<50?'#16a34a':budgetPct<80?'#d97706':'#dc2626',fontWeight:700}}>${spent}</span> of $5.00
-            &nbsp;|&nbsp;{usage.scores} scores, {usage.rewrites} rewrites
+            &nbsp;|&nbsp;{usage.scores} scores, {usage.rewrites} rewrites, {usage.coverLetters||0} letters
             &nbsp;|&nbsp;<span style={{color:remaining>1?'#16a34a':'#d97706',fontWeight:600}}>${remaining} left</span>
             {remaining<0.5&&<span style={{color:'#dc2626',fontWeight:700}}> - top up soon</span>}
           </div>
@@ -501,7 +647,7 @@ export default function App() {
                   );
                 })()}
                 {tab==='resume'&&(()=>{
-                  const rw=ai[sel.id]?.rewrite,ats=ai[sel.id]?.ats;
+                  const rw=ai[sel.id]?.rewrite,ats=ai[sel.id]?.ats,cl=ai[sel.id]?.coverLetter;
                   if(!rw) return <div style={{textAlign:'center',padding:48,color:'#94a3b8'}}><div style={{fontSize:14,marginBottom:8,fontWeight:600,color:'#64748b'}}>No tailored resume yet</div><Btn onClick={()=>rewriteJob(sel)} disabled={!!aiLoading[sel.id]} color='#7c3aed'>{aiLoading[sel.id]==='rewriting'?'Writing...':'Generate Tailored Resume'}</Btn></div>;
                   return(
                     <div>
@@ -531,7 +677,36 @@ export default function App() {
                           <button onClick={()=>generateWord(rw,sel)} style={{padding:'8px 16px',borderRadius:8,border:'2px solid rgba(255,255,255,0.4)',background:'rgba(255,255,255,0.12)',color:'white',fontWeight:700,fontSize:12,cursor:'pointer'}}>{'Word'+(ats?.passed?' (ATS OK)':'')}</button>
                         </div>
                       </div>
-                      <div style={{background:'#fafafa',border:'1px solid #e2e8f0',borderRadius:10,padding:16,fontSize:12,lineHeight:1.85,color:'#1e293b',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:380,overflow:'auto'}}>{rw}</div>
+                      <div style={{background:'#fafafa',border:'1px solid #e2e8f0',borderRadius:10,padding:16,fontSize:12,lineHeight:1.85,color:'#1e293b',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:340,overflow:'auto',marginBottom:16}}>{rw}</div>
+
+                      {/* ── Cover Letter Section ── */}
+                      <div style={{borderTop:'2px solid #e2e8f0',paddingTop:16}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                          <div>
+                            <div style={{fontWeight:700,fontSize:13,color:'#0f172a'}}>Cover Letter</div>
+                            <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>AI-tailored tone based on company type</div>
+                          </div>
+                          <Btn
+                            onClick={()=>generateCoverLetter(sel)}
+                            disabled={!!aiLoading[sel.id]}
+                            color='#0d9488'
+                            style={{fontSize:12}}
+                          >
+                            {aiLoading[sel.id]==='cover'?'Writing...':cl?'Regenerate':'Generate Cover Letter'}
+                          </Btn>
+                        </div>
+
+                        {cl&&(
+                          <div>
+                            <div style={{display:'flex',gap:6,marginBottom:10,flexWrap:'wrap'}}>
+                              <button onClick={()=>{navigator.clipboard.writeText(cl);setClCopyMsg('Copied!');setTimeout(()=>setClCopyMsg(''),2000);}} style={{padding:'6px 12px',borderRadius:6,border:'1px solid #e2e8f0',background:clCopyMsg?'#f0fdf4':'white',fontSize:11,cursor:'pointer',color:clCopyMsg?'#166534':'#475569',fontWeight:600}}>{clCopyMsg||'Copy'}</button>
+                              <button onClick={()=>generateCoverLetterPDF(cl,sel,setClDlPDF)} disabled={clDlPDF} style={{padding:'6px 12px',borderRadius:6,border:'none',background:'#0d9488',color:'white',fontSize:11,cursor:clDlPDF?'wait':'pointer',fontWeight:600,opacity:clDlPDF?0.7:1}}>{clDlPDF?'Generating...':'PDF'}</button>
+                              <button onClick={()=>generateCoverLetterWord(cl,sel)} style={{padding:'6px 12px',borderRadius:6,border:'none',background:'#475569',color:'white',fontSize:11,cursor:'pointer',fontWeight:600}}>Word</button>
+                            </div>
+                            <div style={{background:'#f0fdfa',border:'1px solid #99f6e4',borderRadius:10,padding:16,fontSize:12,lineHeight:1.9,color:'#1e293b',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:380,overflow:'auto'}}>{cl}</div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })()}
@@ -559,7 +734,7 @@ export default function App() {
           ):(
             <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
               <table style={{width:'100%',borderCollapse:'collapse'}}>
-                <thead><tr style={{background:'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>{['Position','Company','Mode','Applied','Score','ATS','Resume',''].map(h=><th key={h} style={{padding:'10px 16px',textAlign:'left',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.06em',whiteSpace:'nowrap'}}>{h}</th>)}</tr></thead>
+                <thead><tr style={{background:'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>{['Position','Company','Mode','Applied','Score','ATS','Docs',''].map(h=><th key={h} style={{padding:'10px 16px',textAlign:'left',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.06em',whiteSpace:'nowrap'}}>{h}</th>)}</tr></thead>
                 <tbody>
                   {applications.map((a,i)=>{
                     const isH=histSel?.id===a.id;
@@ -572,21 +747,50 @@ export default function App() {
                           <td style={{padding:'12px 16px',fontSize:12,color:'#64748b',whiteSpace:'nowrap'}}>{fmtDate(a.appliedAt)}</td>
                           <td style={{padding:'12px 16px'}}>{a.recruiterScore?<span style={{fontSize:14,fontWeight:800,color:scoreColor(a.recruiterScore)}}>{a.recruiterScore}%</span>:<span style={{color:'#cbd5e1'}}>--</span>}</td>
                           <td style={{padding:'12px 16px'}}>{a.atsCheckPassed?<span style={{color:'#16a34a',fontWeight:800}}>OK</span>:<span style={{color:'#94a3b8'}}>--</span>}</td>
-                          <td style={{padding:'12px 16px'}}>{a.resume?<span style={{color:'#3b82f6',fontSize:12,fontWeight:600}}>{isH?'Hide':'View'}</span>:<span style={{color:'#cbd5e1',fontSize:11}}>None</span>}</td>
+                          <td style={{padding:'12px 16px'}}>
+                            <div style={{display:'flex',gap:4'}}>
+                              {a.resume&&<span style={{fontSize:10,background:'#eff6ff',color:'#3b82f6',padding:'2px 7px',borderRadius:8,fontWeight:700}}>CV</span>}
+                              {a.coverLetter&&<span style={{fontSize:10,background:'#f0fdfa',color:'#0d9488',padding:'2px 7px',borderRadius:8,fontWeight:700}}>CL</span>}
+                              {!a.resume&&!a.coverLetter&&<span style={{color:'#cbd5e1',fontSize:11}}>None</span>}
+                            </div>
+                          </td>
                           <td style={{padding:'12px 12px'}}><button onClick={e=>{e.stopPropagation();deleteApp(a.id);}} style={{padding:'4px 8px',borderRadius:6,border:'1px solid #fee2e2',background:'#fef2f2',color:'#dc2626',fontSize:11,cursor:'pointer',fontWeight:600}}>Del</button></td>
                         </tr>
-                        {isH&&a.resume&&(
+                        {isH&&(a.resume||a.coverLetter)&&(
                           <tr><td colSpan={8} style={{padding:'0 16px 16px',background:'#eff6ff',borderBottom:'1px solid #e2e8f0'}}>
                             <div style={{background:'white',borderRadius:10,border:'1px solid #e2e8f0',padding:16}}>
-                              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
-                                <div><div style={{fontWeight:700,fontSize:13}}>{a.title} at {a.company}</div><div style={{fontSize:11,color:'#64748b',marginTop:2}}>Applied {fmtDate(a.appliedAt)}{a.atsCheckPassed?' - ATS Ready':''}</div></div>
-                                <div style={{display:'flex',gap:8}}>
-                                  <button onClick={()=>{navigator.clipboard.writeText(a.resume);setHistCopy('Copied!');setTimeout(()=>setHistCopy(''),2000);}} style={{padding:'6px 12px',borderRadius:6,border:'1px solid #e2e8f0',background:histCopy?'#f0fdf4':'white',fontSize:11,cursor:'pointer',color:histCopy?'#166534':'#475569',fontWeight:600}}>{histCopy||'Copy'}</button>
-                                  <button onClick={()=>generatePDF(a.resume,a,setHistDlPDF)} disabled={histDlPDF} style={{padding:'6px 12px',borderRadius:6,border:'none',background:'#1c3678',color:'white',fontSize:11,cursor:histDlPDF?'wait':'pointer',fontWeight:600}}>{histDlPDF?'...':'PDF'}</button>
-                                  <button onClick={()=>generateWord(a.resume,a)} style={{padding:'6px 12px',borderRadius:6,border:'none',background:'#475569',color:'white',fontSize:11,cursor:'pointer',fontWeight:600}}>Word</button>
+                              <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>{a.title} at {a.company}</div>
+                              <div style={{fontSize:11,color:'#64748b',marginBottom:14}}>Applied {fmtDate(a.appliedAt)}{a.atsCheckPassed?' · ATS Ready':''}</div>
+
+                              {/* Resume section */}
+                              {a.resume&&(
+                                <div style={{marginBottom:a.coverLetter?20:0}}>
+                                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                                    <div style={{fontSize:12,fontWeight:700,color:'#1e293b'}}>Resume</div>
+                                    <div style={{display:'flex',gap:6}}>
+                                      <button onClick={()=>{navigator.clipboard.writeText(a.resume);setHistCopy('Copied!');setTimeout(()=>setHistCopy(''),2000);}} style={{padding:'5px 10px',borderRadius:6,border:'1px solid #e2e8f0',background:histCopy?'#f0fdf4':'white',fontSize:11,cursor:'pointer',color:histCopy?'#166534':'#475569',fontWeight:600}}>{histCopy||'Copy'}</button>
+                                      <button onClick={()=>generatePDF(a.resume,a,setHistDlPDF)} disabled={histDlPDF} style={{padding:'5px 10px',borderRadius:6,border:'none',background:'#1c3678',color:'white',fontSize:11,cursor:histDlPDF?'wait':'pointer',fontWeight:600}}>{histDlPDF?'...':'PDF'}</button>
+                                      <button onClick={()=>generateWord(a.resume,a)} style={{padding:'5px 10px',borderRadius:6,border:'none',background:'#475569',color:'white',fontSize:11,cursor:'pointer',fontWeight:600}}>Word</button>
+                                    </div>
+                                  </div>
+                                  <div style={{fontSize:11,lineHeight:1.8,color:'#374151',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:260,overflow:'auto',background:'#fafafa',padding:12,borderRadius:8}}>{a.resume}</div>
                                 </div>
-                              </div>
-                              <div style={{fontSize:11,lineHeight:1.8,color:'#374151',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:320,overflow:'auto',background:'#fafafa',padding:12,borderRadius:8}}>{a.resume}</div>
+                              )}
+
+                              {/* Cover letter section */}
+                              {a.coverLetter&&(
+                                <div>
+                                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                                    <div style={{fontSize:12,fontWeight:700,color:'#0d9488'}}>Cover Letter</div>
+                                    <div style={{display:'flex',gap:6}}>
+                                      <button onClick={()=>{navigator.clipboard.writeText(a.coverLetter);setHistClCopy('Copied!');setTimeout(()=>setHistClCopy(''),2000);}} style={{padding:'5px 10px',borderRadius:6,border:'1px solid #e2e8f0',background:histClCopy?'#f0fdf4':'white',fontSize:11,cursor:'pointer',color:histClCopy?'#166534':'#475569',fontWeight:600}}>{histClCopy||'Copy'}</button>
+                                      <button onClick={()=>generateCoverLetterPDF(a.coverLetter,a,setHistClDlPDF)} disabled={histClDlPDF} style={{padding:'5px 10px',borderRadius:6,border:'none',background:'#0d9488',color:'white',fontSize:11,cursor:histClDlPDF?'wait':'pointer',fontWeight:600}}>{histClDlPDF?'...':'PDF'}</button>
+                                      <button onClick={()=>generateCoverLetterWord(a.coverLetter,a)} style={{padding:'5px 10px',borderRadius:6,border:'none',background:'#475569',color:'white',fontSize:11,cursor:'pointer',fontWeight:600}}>Word</button>
+                                    </div>
+                                  </div>
+                                  <div style={{fontSize:11,lineHeight:1.9,color:'#374151',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:260,overflow:'auto',background:'#f0fdfa',padding:12,borderRadius:8,border:'1px solid #99f6e4'}}>{a.coverLetter}</div>
+                                </div>
+                              )}
                             </div>
                           </td></tr>
                         )}
