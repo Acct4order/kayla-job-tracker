@@ -252,18 +252,21 @@ const generateCoverLetterPDF = async (clText, job, setDl) => {
     doc.text(new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }), ml, y);
     y += 10;
 
-    // Body paragraphs — strip name/contact lines the AI may have included (already in the header bar)
-    const isHeaderLine = l =>
+    // Body paragraphs — strip name/contact lines the AI may have included at the TOP only (already in header bar)
+    const allLines = clText.split('\n').map(l => l.trim()).filter(Boolean);
+    const isTopHeaderLine = l =>
       /^kayla\s+kwok$/i.test(l) ||
       (l.includes('@') && l.includes('|')) ||
       (/ontario/i.test(l) && /\d{3}/.test(l));
-    const paragraphs = clText.split('\n').map(l => l.trim()).filter(l => l && !isHeaderLine(l));
+    // Only drop header lines from the leading block (before "Dear" or first real paragraph)
+    let startIdx = 0;
+    while (startIdx < allLines.length && isTopHeaderLine(allLines[startIdx])) startIdx++;
+    const paragraphs = allLines.slice(startIdx);
     for (const para of paragraphs) {
       // Detect sign-off lines (short, ends with name)
-      const isSignOff = para.length < 60 && (
-        /^(sincerely|regards|best|yours|thank)/i.test(para) ||
-        para === 'Kayla Kwok' ||
-        para === 'Kayla'
+      const isSignOff = para.length < 80 && (
+        /^(sincerely|regards|best|yours|thank|warm)/i.test(para) ||
+        /^kayla(\s+kwok)?$/i.test(para)
       );
 
       if (isSignOff) {
@@ -325,14 +328,17 @@ const generateWord = (resumeText, job) => {
 // Cover letter Word export — plain professional letter
 const generateCoverLetterWord = (clText, job) => {
   const date = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
-  const isHeaderLine = l =>
+  const allLines = clText.split('\n').map(l => l.trim()).filter(Boolean);
+  const isTopHeaderLine = l =>
     /^kayla\s+kwok$/i.test(l) ||
     (l.includes('@') && l.includes('|')) ||
     (/ontario/i.test(l) && /\d{3}/.test(l));
-  const paragraphs = clText.split('\n').map(l => l.trim()).filter(l => l && !isHeaderLine(l));
+  let startIdx = 0;
+  while (startIdx < allLines.length && isTopHeaderLine(allLines[startIdx])) startIdx++;
+  const paragraphs = allLines.slice(startIdx);
   let body = `<p style='font-family:Calibri,sans-serif;font-size:10pt;color:#1a202c;margin:0 0 12pt'>${date}</p>`;
   for (const para of paragraphs) {
-    const isSignOff = para.length < 60 && (/^(sincerely|regards|best|yours|thank)/i.test(para) || para === 'Kayla Kwok' || para === 'Kayla');
+    const isSignOff = para.length < 80 && (/^(sincerely|regards|best|yours|thank|warm)/i.test(para) || /^kayla(\s+kwok)?$/i.test(para));
     if (isSignOff) {
       body += `<p style='font-family:Calibri,sans-serif;font-size:10pt;color:#1a202c;margin:6pt 0 2pt'>${para}</p>`;
     } else {
