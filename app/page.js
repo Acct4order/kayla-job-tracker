@@ -74,7 +74,9 @@ const loadApps = () => { try { const s = localStorage.getItem(STORE_KEY); return
 const saveApps = apps => { try { localStorage.setItem(STORE_KEY, JSON.stringify(apps)); } catch (e) { console.error(e); } };
 
 const SKWS = ['PROFESSIONAL SUMMARY', 'CORE SKILLS', 'PROFESSIONAL EXPERIENCE', 'EDUCATION', 'SKILLS', 'EXPERIENCE', 'SUMMARY', 'CERTIFICATIONS'];
-const COKS = ['Government', 'Corporation', 'Corp', 'Inc', 'Ltd', 'Health', 'University', 'College', 'Centre', 'Center', 'Department', 'Ministry', 'CPA', 'Commission', 'Region', 'Institute', 'Authority', 'Agency', 'Council', 'Office', 'Bureau'];
+// Note: 'Council', 'Office', 'Bureau' removed — they appear in job titles (Council Secretary, Office Manager, Bureau Chief)
+// Company detection requires 3+ words minimum to avoid misclassifying 2-word job titles
+const COKS = ['Government', 'Corporation', 'Corp', 'Inc', 'Ltd', 'Health', 'University', 'College', 'Centre', 'Center', 'Department', 'Ministry', 'CPA', 'Commission', 'Region', 'Institute', 'Authority', 'Agency'];
 // Month abbreviations for date detection
 const MONTH_PAT = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i;
 const DATE_LINE_PAT = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}/i;
@@ -111,10 +113,11 @@ const getLineType = (line, lc) => {
   if (!hasDate) {
     const isKnownOrg = COKS.some(k => line.indexOf(k) >= 0);
     const pipeCount = (line.match(/\|/g) || []).length;
-    // Short non-date line with org keyword or reasonable pipe structure
-    if (isKnownOrg && line.split(' ').length <= 12) return 'company';
-    // Lines that look like "Company Name | Division" with one pipe and no date
-    if (pipeCount === 1 && line.split(' ').length <= 10 && !hasDate) return 'company';
+    const wordCount2 = line.split(' ').length;
+    // Require 3+ words for org keyword match — prevents "Council Secretary", "Office Manager" etc. being misclassified
+    if (isKnownOrg && wordCount2 >= 3 && wordCount2 <= 12) return 'company';
+    // Lines that look like "Company Name | Division" with one pipe and no date (3+ words)
+    if (pipeCount === 1 && wordCount2 >= 3 && wordCount2 <= 10 && !hasDate) return 'company';
   }
 
   // Job title: short, Title Case, appears after section heading context
