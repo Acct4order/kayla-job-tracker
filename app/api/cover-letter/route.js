@@ -4,28 +4,37 @@ export async function POST(request) {
   try {
     const { job, resume } = await request.json();
 
-    const prompt = `You are an elite executive cover letter writer. Analyze the company and role to decide the ideal tone:
-- Government / public sector / healthcare / NGO → formal and precise
-- Startup / tech / creative → warm, confident, slightly personal
-- Corporate / financial / legal / consulting → professional and results-focused
+    const prompt = `You are an elite executive career writer who has coached hundreds of C-suite candidates. Your cover letters are known for stopping hiring managers cold in the first 6 seconds — before they've read a full sentence.
 
-JOB: ${job.title} at ${job.company} | ${job.location} | ${job.workMode}
+TARGET ROLE: ${job.title} at ${job.company} | ${job.location} | ${job.workMode}
+
 JOB DESCRIPTION:
 ${(job.description || '').substring(0, 2500)}
 
 CANDIDATE RESUME:
 ${resume}
 
-Write a cover letter tailored to this specific role and company. Rules:
-- 3 tight paragraphs, max 350 words total
-- Opening: why this role and company specifically (no generic openers like "I am writing to apply")
-- Middle: 2-3 concrete achievements from the resume that directly match the job requirements
-- Closing: confident next step, no grovelling
-- Address to "Hiring Manager" unless a name is evident from the job description
-- Use the candidate's actual contact details from the resume
-- Sign off with candidate's name
-- Do NOT fabricate achievements or credentials
-- Plain text output only, no markdown`;
+COVER LETTER RULES:
+1. OPENING LINE (most important): Must be a punchy, non-generic hook that lands in under 6 seconds. Lead with the candidate's single strongest differentiator for THIS specific role — a credential, a number, a direct experience match. Never start with "I am writing to apply" or any variation. Never start with "I". Use a short declarative or fragment that arrests attention.
+
+2. TONE: Confident, direct, and professional. No filler phrases ("I am passionate about", "I would love the opportunity", "I am excited to"). Every sentence must earn its place.
+
+3. STRUCTURE — 5 paragraphs max:
+   - Para 1: The hook. One or two sentences that make a hiring manager stop scrolling.
+   - Para 2: The proof. Two most relevant past roles mapped directly to the top responsibilities in this job posting. Specific numbers and outcomes only.
+   - Para 3: The insight. One short paragraph showing the candidate understands what this role REALLY requires (not what it says on paper). Shows strategic thinking.
+   - Para 4: The operational match. Ties remaining experience directly to specific duties in the posting. Reframes experience as direct evidence, not adjacent skills.
+   - Para 5: The differentiator close. One unique credential, skill, or attribute that most candidates won't have. End with quiet confidence — no begging for an interview.
+
+4. LENGTH: 350–420 words. Tight. No padding.
+
+5. Sign off with:
+Sincerely,
+Kayla Kwok
+Ontario, Canada
+(437) 362-9928 | kaylakwok.km@gmail.com
+
+Output plain text only. No markdown. No subject line.`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
