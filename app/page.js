@@ -75,12 +75,17 @@ const saveApps = apps => { try { localStorage.setItem(STORE_KEY, JSON.stringify(
 
 const SKWS = ['PROFESSIONAL SUMMARY', 'CORE SKILLS', 'PROFESSIONAL EXPERIENCE', 'EDUCATION', 'SKILLS', 'EXPERIENCE', 'SUMMARY', 'CERTIFICATIONS'];
 // Note: 'Council', 'Office', 'Bureau' removed — they appear in job titles (Council Secretary, Office Manager, Bureau Chief)
-// Company detection requires 3+ words minimum to avoid misclassifying 2-word job titles
-const COKS = ['Government', 'Corporation', 'Corp', 'Inc', 'Ltd', 'Health', 'University', 'College', 'Centre', 'Center', 'Department', 'Ministry', 'CPA', 'Commission', 'Region', 'Institute', 'Authority', 'Agency'];
-// Month abbreviations for date detection
-const MONTH_PAT = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i;
+// Company detection requires 3+ words to avoid misclassifying 2-word job titles
+// COKS uses word-boundary regex to prevent substring matches (e.g. 'Corp' inside 'Corporate')
+const COKS_TERMS = ['Government', 'Corporation', 'Corp', 'Inc', 'Ltd', 'Health', 'University', 'College', 'Centre', 'Center', 'Department', 'Ministry', 'CPA', 'Commission', 'Region', 'Institute', 'Authority', 'Agency'];
+const COKS_RE = COKS_TERMS.map(k => new RegExp('(^|[^a-zA-Z])' + k + '([^a-zA-Z]|$)', 'i'));
+// Date detection patterns
 const DATE_LINE_PAT = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}/i;
-const LOCATION_DATE_PAT = /^[A-Za-z][\w\s,]+\|\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i;
+// Location+date: must start with a real place (short word before pipe, not an acronym/degree line)
+// e.g. "Toronto, ON | Sep 2024" or "Hong Kong | Mar 2024" — NOT "CESGA, Certified... | EFFAS, Apr 2024"
+const LOCATION_DATE_PAT = /^[A-Z][a-z]+[\w\s,]*\|\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}/;
+// Education/certification lines — exclude from company detection
+const DEGREE_PAT = /\b(LLB|LLM|MBA|BSc|BEng|BA|PhD|JD|CESGA|CFA|PMP|Bachelor|Master|Diploma|Degree|Certificate)\b/i;
 
 // ATS-aware line classifier. Returns one of:
 //   name | contact | section | bullet | jobtitle | company | location_date | body | empty
@@ -98,26 +103,26 @@ const getLineType = (line, lc) => {
   // Bullets
   if (line.startsWith('-') || line.startsWith('*') || line.startsWith('•')) return 'bullet';
 
-  // Location + date line: "City, Province | Mon YYYY – Mon YYYY"
-  // Matches lines like "Toronto, ON | Sep 2024 – Aug 2025" or "Hong Kong | Mar 2024 – May 2024"
-  if (LOCATION_DATE_PAT.test(line) || (line.indexOf('|') >= 0 && DATE_LINE_PAT.test(line))) {
-    return 'location_date';
-  }
-
-  // Pure date ranges with no pipe (e.g. "Sep 2024 – Aug 2025" or "2013 – 2015")
-  if (DATE_LINE_PAT.test(line) && line.split(' ').length <= 6) return 'location_date';
+  // Location + date: "City, Province | Mon YYYY – Mon YYYY" or "City | Mon YYYY – Mon YYYY"
+  // LOCATION_DATE_PAT requires lowercase after first char (real place name, not acronym)
+  // Secondary check: pipe + date — but only if NOT a degree/certification line
+  if (LOCATION_DATE_PAT.test(line)) return 'location_date';
+  if (line.indexOf('|') >= 0 && DATE_LINE_PAT.test(line) && !DEGREE_PAT.test(line)) return 'location_date';
+  // Pure date range with no pipe (e.g. "Sep 2024 – Aug 2025")
+  if (DATE_LINE_PAT.test(line) && line.split(' ').length <= 6 && !DEGREE_PAT.test(line)) return 'location_date';
 
   // Company line: contains known org keywords OR is a short line that looks like an org name
   // Must NOT contain a date pattern (those go to location_date above)
   const hasDate = DATE_LINE_PAT.test(line);
   if (!hasDate) {
-    const isKnownOrg = COKS.some(k => line.indexOf(k) >= 0);
+    const isKnownOrg = COKS_RE.some(re => re.test(line));
     const pipeCount = (line.match(/\|/g) || []).length;
     const wordCount2 = line.split(' ').length;
-    // Require 3+ words for org keyword match — prevents "Council Secretary", "Office Manager" etc. being misclassified
-    if (isKnownOrg && wordCount2 >= 3 && wordCount2 <= 12) return 'company';
-    // Lines that look like "Company Name | Division" with one pipe and no date (3+ words)
-    if (pipeCount === 1 && wordCount2 >= 3 && wordCount2 <= 10 && !hasDate) return 'company';
+    const isDegree = DEGREE_PAT.test(line);
+    // Require 3+ words, org keyword, and NOT a degree/certification line
+    if (isKnownOrg && wordCount2 >= 3 && wordCount2 <= 12 && !isDegree) return 'company';
+    // "Company Name | Division" with one pipe, no date, no degree keyword
+    if (pipeCount === 1 && wordCount2 >= 3 && wordCount2 <= 10 && !hasDate && !isDegree) return 'company';
   }
 
   // Job title: short, Title Case, appears after section heading context
