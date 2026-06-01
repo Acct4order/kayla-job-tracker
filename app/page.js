@@ -331,7 +331,7 @@ export default function App() {
   const [histDlPDF, setHistDlPDF] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [newJob, setNewJob] = useState({ title: '', company: '', location: 'Markham, ON', workMode: 'Hybrid', salary: '', description: '', applyLink: '' });
-  const [usage, setUsage] = useState({ scores: 0, rewrites: 0 });
+  const [usage, setUsage] = useState({ scores: 0, rewrites: 0, covers: 0 });
 
   useEffect(() => {
     setApplications(loadApps());
@@ -341,7 +341,7 @@ export default function App() {
   const setStatus = (msg, ok = true, ms = 5000) => { setStatusMsg(msg); setStatusOk(ok); if (ms) setTimeout(() => setStatusMsg(''), ms); };
   const isApplied = id => applications.some(a => a.id === id);
   const trackUsage = type => { setUsage(prev => { const u = { ...prev, [type]: prev[type]+1 }; localStorage.setItem('kayla_usage', JSON.stringify(u)); return u; }); };
-  const estCost = () => ((usage.scores*0.01)+(usage.rewrites*0.03)).toFixed(2);
+  const estCost = () => ((usage.scores*0.01)+(usage.rewrites*0.03)+(usage.covers*0.02)).toFixed(2);
   const estRemaining = () => Math.max(0, 5-parseFloat(estCost())).toFixed(2);
 
   const fetchJobs = useCallback(async () => {
@@ -388,6 +388,17 @@ export default function App() {
       setAi(p => ({...p,[job.id]:{...p[job.id],rewrite:data.result,ats:atsResult}}));
       trackUsage('rewrites'); setTab('resume');
     } catch(e) { alert('Rewrite failed: '+e.message); }
+    finally { setAiLoading(p => ({...p,[job.id]:null})); }
+  };
+
+  const coverJob = async job => {
+    setAiLoading(p => ({...p,[job.id]:'covering'}));
+    try {
+      const r = await fetch('/api/cover-letter', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({job,resume:RESUME}) });
+      const data = await r.json(); if (data.error) throw new Error(data.error);
+      setAi(p => ({...p,[job.id]:{...p[job.id],cover:data.result}}));
+      trackUsage('covers'); setTab('cover');
+    } catch(e) { alert('Cover letter failed: '+e.message); }
     finally { setAiLoading(p => ({...p,[job.id]:null})); }
   };
 
@@ -448,7 +459,7 @@ export default function App() {
           </div>
           <div style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>
             <span style={{color:budgetPct<50?'#16a34a':budgetPct<80?'#d97706':'#dc2626',fontWeight:700}}>${spent}</span> of $5.00
-            &nbsp;|&nbsp;{usage.scores} scores, {usage.rewrites} rewrites
+            &nbsp;|&nbsp;{usage.scores} scores, {usage.rewrites} rewrites, {usage.covers} covers
             &nbsp;|&nbsp;<span style={{color:remaining>1?'#16a34a':'#d97706',fontWeight:600}}>${remaining} left</span>
             {remaining<0.5&&<span style={{color:'#dc2626',fontWeight:700}}> - top up soon</span>}
           </div>
@@ -519,8 +530,8 @@ export default function App() {
                   <button onClick={()=>setSel(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:'#94a3b8',lineHeight:1}}>x</button>
                 </div>
                 <div style={{display:'flex',marginTop:14}}>
-                  {[['details','Details'],['score','AI Score'],['resume','Resume']].map(([k,l])=>(
-                    <button key={k} onClick={()=>setTab(k)} style={{padding:'8px 14px',border:'none',background:'none',cursor:'pointer',fontSize:12,fontWeight:tab===k?700:400,color:tab===k?'#3b82f6':'#64748b',borderBottom:tab===k?'2px solid #3b82f6':'2px solid transparent',marginBottom:-1}}>{l}{k==='score'&&ai[sel.id]?.score?' *':''}{k==='resume'&&ai[sel.id]?.rewrite?' *':''}</button>
+                  {[['details','Details'],['score','AI Score'],['resume','Resume'],['cover','Cover Letter']].map(([k,l])=>(
+                    <button key={k} onClick={()=>setTab(k)} style={{padding:'8px 14px',border:'none',background:'none',cursor:'pointer',fontSize:12,fontWeight:tab===k?700:400,color:tab===k?'#3b82f6':'#64748b',borderBottom:tab===k?'2px solid #3b82f6':'2px solid transparent',marginBottom:-1}}>{l}{k==='score'&&ai[sel.id]?.score?' *':''}{k==='resume'&&ai[sel.id]?.rewrite?' *':''}{k==='cover'&&ai[sel.id]?.cover?' *':''}</button>
                   ))}
                 </div>
               </div>
@@ -530,6 +541,7 @@ export default function App() {
                     <div style={{display:'flex',gap:8,marginBottom:8,flexWrap:'wrap'}}>
                       <Btn onClick={()=>scoreJob(sel)} disabled={!!aiLoading[sel.id]}>{aiLoading[sel.id]==='scoring'?'Scoring...':'Score Resume'}</Btn>
                       <Btn onClick={()=>rewriteJob(sel)} disabled={!!aiLoading[sel.id]} color='#7c3aed'>{aiLoading[sel.id]==='rewriting'?'Rewriting...':'Tailor Resume'}</Btn>
+                      <Btn onClick={()=>coverJob(sel)} disabled={!!aiLoading[sel.id]} color='#0f766e'>{aiLoading[sel.id]==='covering'?'Writing...':'Cover Letter'}</Btn>
                       <button onClick={()=>handleApply(sel)} style={{padding:'8px 14px',borderRadius:8,border:'none',background:isApplied(sel.id)?'#f0fdf4':'#0f172a',color:isApplied(sel.id)?'#166634':'white',fontSize:13,fontWeight:700,cursor:'pointer'}}>{isApplied(sel.id)?'Applied - Apply Again':'Apply and Save'}</button>
                     </div>
                     {applyMsg&&<div style={{fontSize:12,color:'#166534',background:'#f0fdf4',padding:'6px 12px',borderRadius:8,marginBottom:10,fontWeight:600}}>{applyMsg}</div>}
@@ -599,6 +611,33 @@ export default function App() {
                         </div>
                       </div>
                       <div style={{background:'#fafafa',border:'1px solid #e2e8f0',borderRadius:10,padding:16,fontSize:12,lineHeight:1.85,color:'#1e293b',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:380,overflow:'auto'}}>{rw}</div>
+                    </div>
+                  );
+                })()}
+                {tab==='cover'&&(()=>{
+                  const cl=ai[sel.id]?.cover;
+                  const [coverCopy,setCoverCopy] = React.useState('');
+                  if(!cl) return(
+                    <div style={{textAlign:'center',padding:48,color:'#94a3b8'}}>
+                      <div style={{fontSize:14,marginBottom:6,fontWeight:600,color:'#64748b'}}>No cover letter yet</div>
+                      <div style={{fontSize:12,color:'#94a3b8',marginBottom:20}}>Crafted to stop the hiring manager in the first 6 seconds</div>
+                      <Btn onClick={()=>coverJob(sel)} disabled={!!aiLoading[sel.id]} color='#0f766e'>{aiLoading[sel.id]==='covering'?'Writing...':'Generate Cover Letter'}</Btn>
+                    </div>
+                  );
+                  return(
+                    <div>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+                        <div style={{fontSize:12,fontWeight:700,color:'#0f172a'}}>Cover Letter: {sel.title}</div>
+                        <div style={{display:'flex',gap:6}}>
+                          <button onClick={()=>{navigator.clipboard.writeText(cl);setCoverCopy('Copied!');setTimeout(()=>setCoverCopy(''),2000);}} style={{padding:'6px 12px',borderRadius:6,border:'1px solid #e2e8f0',background:coverCopy?'#f0fdf4':'white',fontSize:11,cursor:'pointer',color:coverCopy?'#166534':'#475569',fontWeight:600}}>{coverCopy||'Copy'}</button>
+                          <button onClick={()=>coverJob(sel)} disabled={!!aiLoading[sel.id]} style={{padding:'6px 12px',borderRadius:6,border:'1px solid #e2e8f0',background:'white',fontSize:11,cursor:'pointer',color:'#64748b',fontWeight:600}}>Redo</button>
+                        </div>
+                      </div>
+                      <div style={{background:'#f0fdfa',border:'1px solid #99f6e4',borderRadius:10,padding:'10px 14px',marginBottom:14,display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{fontSize:16}}>⚡</span>
+                        <span style={{fontSize:11,color:'#0f766e',fontWeight:600}}>Written to land in the first 6 seconds — hook, proof, insight, match, differentiator</span>
+                      </div>
+                      <div style={{background:'#fafafa',border:'1px solid #e2e8f0',borderRadius:10,padding:20,fontSize:13,lineHeight:2,color:'#1e293b',whiteSpace:'pre-wrap',maxHeight:440,overflow:'auto'}}>{cl}</div>
                     </div>
                   );
                 })()}
