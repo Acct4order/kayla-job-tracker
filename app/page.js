@@ -1,7 +1,11 @@
 'use client';
 import React, { useState, useCallback, useEffect } from 'react';
 
-const RESUME = `KAYLA KWOK
+// ATS-STANDARD FORMAT: Each job uses 3 separate lines:
+// Line 1: Job Title
+// Line 2: Company Name  
+// Line 3: City, Province | Mon YYYY – Mon YYYY
+const RESUME = `Kayla Kwok
 Ontario, Canada | (437) 362-9928 | kaylakwok.km@gmail.com
 
 PROFESSIONAL SUMMARY
@@ -12,41 +16,44 @@ LLB (Bachelor of Laws) | The Chinese University of Hong Kong, 2013
 CESGA, Certified ESG Analyst | EFFAS, Apr 2024
 
 CORE SKILLS
-Committee and Board Governance | Corporate Governance and ESG Compliance | Executive and Leadership Support | Agenda, Minutes and Meeting Packages | Records and Confidential Documentation | Sustainability Reporting Frameworks | Project Coordination | Calendar and Scheduling | Office and Facilities Operations | Policy and Report Writing | Microsoft Office (Word, Excel, Outlook, PowerPoint, Teams, SharePoint) | CCH iFirm | Trilingual: English, Cantonese, Mandarin
+Committee and Board Governance, Corporate Governance and ESG Compliance, Executive and Leadership Support, Agenda Minutes and Meeting Packages, Records and Confidential Documentation, Sustainability Reporting Frameworks, Project Coordination, Calendar and Scheduling, Office and Facilities Operations, Policy and Report Writing, Microsoft Office Suite, CCH iFirm, Trilingual English Cantonese Mandarin
 
 PROFESSIONAL EXPERIENCE
 
-Aug 2025 to Present: Maternity Leave
-
-Administrative Assistant, Project Lead CCH iFirm Implementation
-DCY Professional Corporation CPA | Toronto, ON | Sep 2024 to Aug 2025
+Administrative Assistant, Project Lead – CCH iFirm Implementation
+DCY Professional Corporation CPA
+Toronto, ON | Sep 2024 – Aug 2025
 - Led firm-wide rollout of CCH iFirm across 30-person firm, on time, zero disruption
 - Sole internal project lead: vendor coordination, timeline management, trained all 30 staff
 - Deployed client-facing portal for 300+ clients, eliminating manual document handling
 - Reduced internal follow-up time 20% by centralising task tracking and communications
 
 Executive Manager
-HK Government, Office of the Government Chief Information Officer | Mar 2024 to May 2024
+HK Government, Office of the Government Chief Information Officer
+Hong Kong | Mar 2024 – May 2024
 - Prepared briefing notes, reports, and materials for a government digital platform with 3M+ users
 - Maintained alignment across 4 departments for senior leadership review
 - Delivered all Legislative Council submission materials on tight deadlines, zero late deliveries
 
 Recruitment Manager
-HK Government, Food and Environmental Hygiene Department | Sep 2018 to Dec 2023
+HK Government, Food and Environmental Hygiene Department
+Hong Kong | Sep 2018 – Dec 2023
 - Led 8-person admin team handling full-cycle recruitment for 400+ employees
 - Rebuilt recruitment workflows from scratch, cut escalated HR matters by 30%
 - Maintained employment records and contracts for 400+ staff with strict confidentiality
 - Authored staffing reports and workforce analyses informing senior leadership decisions
 
 Operations Manager
-HK Government, Department of Health | Jul 2015 to Sep 2018
+HK Government, Department of Health
+Hong Kong | Jul 2015 – Sep 2018
 - Oversaw daily operations of 12 public clinics serving 500,000+ patients
 - Built centralised tracking system for 50+ concurrent maintenance requests
 - Produced operational briefs for senior officials for time-sensitive decisions
 - Primary escalation point for complex complaints across all 12 sites
 
 Council Secretary
-HK Government, Home Affairs Department | Aug 2013 to Jul 2015
+HK Government, Home Affairs Department
+Hong Kong | Aug 2013 – Jul 2015
 - Managed end-to-end administration for 100+ District Council and committee meetings
 - Primary liaison between District Council, public, and 10+ government departments
 - Tracked and closed 95% of committee action items on schedule
@@ -67,23 +74,55 @@ const loadApps = () => { try { const s = localStorage.getItem(STORE_KEY); return
 const saveApps = apps => { try { localStorage.setItem(STORE_KEY, JSON.stringify(apps)); } catch (e) { console.error(e); } };
 
 const SKWS = ['PROFESSIONAL SUMMARY', 'CORE SKILLS', 'PROFESSIONAL EXPERIENCE', 'EDUCATION', 'SKILLS', 'EXPERIENCE', 'SUMMARY', 'CERTIFICATIONS'];
-const COKS = ['Government', 'Corporation', 'Corp', 'Inc', 'Ltd', 'Health', 'University', 'College', 'Centre', 'Center', 'Department', 'Ministry', 'CPA', 'Commission', 'Region'];
+const COKS = ['Government', 'Corporation', 'Corp', 'Inc', 'Ltd', 'Health', 'University', 'College', 'Centre', 'Center', 'Department', 'Ministry', 'CPA', 'Commission', 'Region', 'Institute', 'Authority', 'Agency', 'Council', 'Office', 'Bureau'];
+// Month abbreviations for date detection
+const MONTH_PAT = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i;
+const DATE_LINE_PAT = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}/i;
+const LOCATION_DATE_PAT = /^[A-Za-z][\w\s,]+\|\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i;
 
+// ATS-aware line classifier. Returns one of:
+//   name | contact | section | bullet | jobtitle | company | location_date | body | empty
 const getLineType = (line, lc) => {
   if (!line) return 'empty';
   if (lc === 1) return 'name';
   if (lc === 2 && (line.indexOf('@') >= 0 || (line.match(/\|/g) || []).length >= 2)) return 'contact';
+
+  // Section headings
   const wordCount = line.trim().split(' ').length;
   const isKnown = wordCount <= 5 && SKWS.some(k => line.toUpperCase().indexOf(k) >= 0);
   const isShortCaps = line === line.toUpperCase() && line.length > 4 && line.split(' ').length <= 6 && line.indexOf('-') < 0 && (line.match(/\|/g) || []).length === 0 && !/^\d/.test(line);
   if (isKnown || isShortCaps) return 'section';
-  if (line.startsWith('-') || line.startsWith('*')) return 'bullet';
-  const pc = (line.match(/\|/g) || []).length;
-  if (pc <= 3 && (/\d{4}/.test(line) || pc >= 1 || COKS.some(k => line.indexOf(k) >= 0))) return 'company';
+
+  // Bullets
+  if (line.startsWith('-') || line.startsWith('*') || line.startsWith('•')) return 'bullet';
+
+  // Location + date line: "City, Province | Mon YYYY – Mon YYYY"
+  // Matches lines like "Toronto, ON | Sep 2024 – Aug 2025" or "Hong Kong | Mar 2024 – May 2024"
+  if (LOCATION_DATE_PAT.test(line) || (line.indexOf('|') >= 0 && DATE_LINE_PAT.test(line))) {
+    return 'location_date';
+  }
+
+  // Pure date ranges with no pipe (e.g. "Sep 2024 – Aug 2025" or "2013 – 2015")
+  if (DATE_LINE_PAT.test(line) && line.split(' ').length <= 6) return 'location_date';
+
+  // Company line: contains known org keywords OR is a short line that looks like an org name
+  // Must NOT contain a date pattern (those go to location_date above)
+  const hasDate = DATE_LINE_PAT.test(line);
+  if (!hasDate) {
+    const isKnownOrg = COKS.some(k => line.indexOf(k) >= 0);
+    const pipeCount = (line.match(/\|/g) || []).length;
+    // Short non-date line with org keyword or reasonable pipe structure
+    if (isKnownOrg && line.split(' ').length <= 12) return 'company';
+    // Lines that look like "Company Name | Division" with one pipe and no date
+    if (pipeCount === 1 && line.split(' ').length <= 10 && !hasDate) return 'company';
+  }
+
+  // Job title: short, Title Case, appears after section heading context
   const ws = line.split(' ');
   const tw = ws.filter(w => w.length > 3);
   const mt = tw.length === 0 || tw.filter(w => w[0] === w[0]?.toUpperCase()).length / tw.length >= 0.75;
-  if (ws.length <= 9 && mt && lc > 3) return 'jobtitle';
+  if (ws.length <= 9 && mt && lc > 3 && !hasDate) return 'jobtitle';
+
   return 'body';
 };
 
@@ -136,7 +175,8 @@ const generatePDF = async (resumeText, job, setDl) => {
 
       if (t === 'name') {
         chk(20); doc.setFont('helvetica','bold'); doc.setFontSize(26); doc.setTextColor(...NAVY);
-        doc.text(line, W/2, y, {align:'center'}); y += 8;
+        const displayName = line.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+        doc.text(displayName, W/2, y, {align:'center'}); y += 8;
         doc.setDrawColor(...GOLD); doc.setLineWidth(1.2); doc.line(ml,y,W-mr,y);
         doc.setDrawColor(...NAVY); doc.setLineWidth(0.3); doc.line(ml,y+1.8,W-mr,y+1.8); y += 6;
       } else if (t === 'contact') {
@@ -150,33 +190,30 @@ const generatePDF = async (resumeText, job, setDl) => {
         doc.setDrawColor(...RULE); doc.setLineWidth(0.4); doc.line(ml, y, W-mr, y);
         y += 5; doc.setTextColor(...INK);
       } else if (t === 'bullet') {
-        const bt = line.replace(/^[-*]\s*/,'');
+        const bt = line.replace(/^[-*•]\s*/,'');
         doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...INK);
         const wrp = split(bt, uw-6); chk(wrp.length*4.5+1);
         doc.setFillColor(...GOLD); doc.circle(ml+2, y-1.5, 0.7, 'F');
         putJustified(wrp, ml+6, y, 4.5, uw-6); y += wrp.length*4.5+0.5;
-      } else if (t === 'company') {
-        chk(8);
-        const parts = line.split('|').map(p => p.trim());
-        const last = parts[parts.length-1];
-        const hasDate = /\d{4}/.test(last) || /present/i.test(last);
-        doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
-        if (parts.length > 1 && hasDate) {
-          const main = parts.slice(0,-1).join('  /  ');
-          doc.setFont('helvetica','normal');
-          const mainW = split(main, uw-45); put(mainW, ml, y, 4.2);
-          doc.setFont('helvetica','italic'); doc.setTextColor(...GOLD);
-          doc.text(last, W-mr, y, {align:'right'}); y += mainW.length*4.2+1.5;
-        } else {
-          doc.setFont('helvetica','normal');
-          const wrp = split(line, uw); put(wrp, ml, y, 4.2); y += wrp.length*4.2+1.5;
-        }
-        doc.setTextColor(...INK);
       } else if (t === 'jobtitle') {
-        chk(9); y += 2;
+        // Job title: bold, prominent
+        chk(9); y += 3;
         doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...INK);
-        doc.text(line, ml, y); y += 5;
+        const wrp = split(line, uw); put(wrp, ml, y, 5); y += wrp.length*5;
+      } else if (t === 'company') {
+        // Company name: semi-bold, distinct from location_date
+        chk(7);
+        doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...NAVY);
+        const wrp = split(line, uw); put(wrp, ml, y, 4.5); y += wrp.length*4.5+0.5;
+        doc.setTextColor(...INK);
+      } else if (t === 'location_date') {
+        // Location and dates: italic, muted — ATS reads these separately from company
+        chk(7);
+        doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
+        const wrp = split(line, uw); put(wrp, ml, y, 4.2); y += wrp.length*4.2+2;
+        doc.setTextColor(...INK);
       } else {
+        // body text (e.g. core skills line, education lines)
         doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...INK);
         const hasManyPipes = (line.match(/\|/g)||[]).length > 3;
         const display = hasManyPipes ? line : sentCase(line);
@@ -199,169 +236,56 @@ const generatePDF = async (resumeText, job, setDl) => {
   finally { setDl(false); }
 };
 
-// Cover letter PDF — clean letter format, no resume styling
-const generateCoverLetterPDF = async (clText, job, setDl) => {
-  setDl(true);
-  try {
-    const { jsPDF } = await import('jspdf');
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const W = 210, H = 297, ml = 25, mr = 25, mt = 30, mb = 25;
-    const uw = W - ml - mr;
-    const NAVY = [28, 54, 120], GOLD = [180, 148, 80], INK = [26, 32, 44], MUTED = [80, 96, 115];
-    let y = mt;
-
-    const split = (text, w) => { const r = doc.splitTextToSize(text, w); return Array.isArray(r) ? r : [text]; };
-    const justifyLine = (text, x, sy, maxWidth) => {
-      const words = text.split(' ');
-      if (words.length <= 1) { doc.text(text, x, sy); return; }
-      const totalWordWidth = words.reduce((sum, w) => sum + doc.getTextWidth(w), 0);
-      const gap = (maxWidth - totalWordWidth) / (words.length - 1);
-      let cx = x;
-      words.forEach(word => { doc.text(word, cx, sy); cx += doc.getTextWidth(word) + gap; });
-    };
-    const putJustified = (arr, x, sy, lh, maxWidth) => {
-      arr.forEach((line, i) => {
-        const isLast = i === arr.length - 1;
-        if (isLast) doc.text(line, x, sy + i * lh);
-        else justifyLine(line, x, sy + i * lh, maxWidth);
-      });
-    };
-
-    // Header bar
-    doc.setFillColor(...NAVY);
-    doc.rect(0, 0, W, 18, 'F');
-    doc.setDrawColor(...GOLD);
-    doc.setLineWidth(1.5);
-    doc.line(0, 18, W, 18);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(255, 255, 255);
-    doc.text('KAYLA KWOK', ml, 11);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(180, 200, 230);
-    doc.text('Ontario, Canada  |  (437) 362-9928  |  kaylakwok.km@gmail.com', W - mr, 11, { align: 'right' });
-
-    y = mt + 10;
-
-    // Date
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(...MUTED);
-    doc.text(new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }), ml, y);
-    y += 10;
-
-    // Body paragraphs — strip name/contact lines the AI may have included at the TOP only (already in header bar)
-    const allLines = clText.split('\n').map(l => l.trim()).filter(Boolean);
-    const isTopHeaderLine = l =>
-      /^kayla\s+kwok$/i.test(l) ||
-      (l.includes('@') && l.includes('|')) ||
-      (/ontario/i.test(l) && /\d{3}/.test(l));
-    // Only drop header lines from the leading block (before "Dear" or first real paragraph)
-    let startIdx = 0;
-    while (startIdx < allLines.length && isTopHeaderLine(allLines[startIdx])) startIdx++;
-    const paragraphs = allLines.slice(startIdx);
-    for (const para of paragraphs) {
-      // Detect sign-off lines (short, ends with name)
-      const isSignOff = para.length < 80 && (
-        /^(sincerely|regards|best|yours|thank|warm)/i.test(para) ||
-        /^kayla(\s+kwok)?$/i.test(para)
-      );
-
-      if (isSignOff) {
-        y += 4;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9.5);
-        doc.setTextColor(...INK);
-        doc.text(para, ml, y);
-        y += 6;
-        continue;
-      }
-
-      // Salutation / "Dear Hiring Manager"
-      if (/^dear /i.test(para)) {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9.5);
-        doc.setTextColor(...INK);
-        doc.text(para, ml, y);
-        y += 8;
-        continue;
-      }
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9.5);
-      doc.setTextColor(...INK);
-      const wrapped = split(para, uw);
-      putJustified(wrapped, ml, y, 5.2, uw);
-      y += wrapped.length * 5.2 + 5;
-    }
-
-    // Footer rule
-    doc.setDrawColor(...GOLD);
-    doc.setLineWidth(0.5);
-    doc.line(ml, H - mb, W - mr, H - mb);
-
-    doc.save('Kayla_Kwok_CoverLetter_' + job.title.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf');
-  } catch (e) { alert('Cover letter PDF failed: ' + e.message); }
-  finally { setDl(false); }
-};
-
 const generateWord = (resumeText, job) => {
   const toTitle = s => s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
   const lines = resumeText.split('\n'); let html = '', lc = 0;
   for (const raw of lines) {
     const line = raw.trim(); if (!line) { html += "<p style='margin:3pt 0'>&nbsp;</p>"; continue; } lc++;
     const t = getLineType(line, lc);
-    if (t === 'name') html += "<p style='font-family:Calibri,sans-serif;font-size:26pt;font-weight:bold;color:#1c3678;text-align:center;margin:0 0 2pt'>" + line + "</p><div style='border-bottom:2pt solid #b4944f;margin:2pt 0 1pt'></div><div style='border-bottom:0.5pt solid #1c3678;margin:0 0 4pt'></div>";
-    else if (t === 'contact') html += "<p style='font-family:Calibri,sans-serif;font-size:9pt;color:#506070;text-align:center;margin:0 0 12pt'>" + line + "</p>";
-    else if (t === 'section') { const title = toTitle(line); html += "<table style='width:100%;margin:14pt 0 5pt'><tr><td style='width:3pt;background:#b4944f'>&nbsp;</td><td style='padding-left:6pt;border-bottom:0.5pt solid #d2dae4;padding-bottom:3pt'><span style='font-family:Calibri,sans-serif;font-size:10.5pt;font-weight:bold;color:#1c3678'>" + title + "</span></td></tr></table>"; }
-    else if (t === 'bullet') { const bt = line.replace(/^[-*]\s*/, ''); html += "<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0 2pt 16pt;text-indent:-10pt;color:#1a202c;line-height:1.4;text-align:justify'>&#9679;&nbsp;" + bt + "</p>"; }
-    else if (t === 'company') html += "<p style='font-family:Calibri,sans-serif;font-size:9pt;font-style:italic;color:#506070;margin:1pt 0 3pt'>" + line + "</p>";
-    else if (t === 'jobtitle') html += "<p style='font-family:Calibri,sans-serif;font-size:11pt;font-weight:bold;color:#1a202c;margin:10pt 0 1pt'>" + line + "</p>";
-    else { const hasManyPipes = (line.match(/\|/g)||[]).length > 3; html += "<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0;color:#1a202c;line-height:1.5;text-align:justify'>" + (hasManyPipes ? line : sentCase(line)) + "</p>"; }
+    if (t === 'name') {
+      const displayName = line.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      html += "<p style='font-family:Calibri,sans-serif;font-size:26pt;font-weight:bold;color:#1c3678;text-align:center;margin:0 0 2pt'>" + displayName + "</p><div style='border-bottom:2pt solid #b4944f;margin:2pt 0 1pt'></div><div style='border-bottom:0.5pt solid #1c3678;margin:0 0 4pt'></div>";
+    } else if (t === 'contact') {
+      html += "<p style='font-family:Calibri,sans-serif;font-size:9pt;color:#506070;text-align:center;margin:0 0 12pt'>" + line + "</p>";
+    } else if (t === 'section') {
+      const title = toTitle(line);
+      html += "<table style='width:100%;margin:14pt 0 5pt'><tr><td style='width:3pt;background:#b4944f'>&nbsp;</td><td style='padding-left:6pt;border-bottom:0.5pt solid #d2dae4;padding-bottom:3pt'><span style='font-family:Calibri,sans-serif;font-size:10.5pt;font-weight:bold;color:#1c3678'>" + title + "</span></td></tr></table>";
+    } else if (t === 'bullet') {
+      const bt = line.replace(/^[-*•]\s*/, '');
+      html += "<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0 2pt 16pt;text-indent:-10pt;color:#1a202c;line-height:1.4;text-align:justify'>&#9679;&nbsp;" + bt + "</p>";
+    } else if (t === 'jobtitle') {
+      // Job title on its own line — bold, clear
+      html += "<p style='font-family:Calibri,sans-serif;font-size:11pt;font-weight:bold;color:#1a202c;margin:10pt 0 1pt'>" + line + "</p>";
+    } else if (t === 'company') {
+      // Company on its own line — navy, semi-bold
+      html += "<p style='font-family:Calibri,sans-serif;font-size:10pt;font-weight:bold;color:#1c3678;margin:0 0 1pt'>" + line + "</p>";
+    } else if (t === 'location_date') {
+      // Location | dates on their own line — italic, muted
+      html += "<p style='font-family:Calibri,sans-serif;font-size:9pt;font-style:italic;color:#506070;margin:0 0 4pt'>" + line + "</p>";
+    } else {
+      const hasManyPipes = (line.match(/\|/g)||[]).length > 3;
+      html += "<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0;color:#1a202c;line-height:1.5;text-align:justify'>" + (hasManyPipes ? line : sentCase(line)) + "</p>";
+    }
   }
   const blob = new Blob(["<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='margin:1in;max-width:7in'>" + html + "</body></html>"], { type: 'application/msword' });
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'Kayla_Kwok_' + job.title.replace(/[^a-zA-Z0-9]/g, '_') + '.doc'; a.click(); URL.revokeObjectURL(url);
-};
-
-// Cover letter Word export — plain professional letter
-const generateCoverLetterWord = (clText, job) => {
-  const date = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
-  const allLines = clText.split('\n').map(l => l.trim()).filter(Boolean);
-  const isTopHeaderLine = l =>
-    /^kayla\s+kwok$/i.test(l) ||
-    (l.includes('@') && l.includes('|')) ||
-    (/ontario/i.test(l) && /\d{3}/.test(l));
-  let startIdx = 0;
-  while (startIdx < allLines.length && isTopHeaderLine(allLines[startIdx])) startIdx++;
-  const paragraphs = allLines.slice(startIdx);
-  let body = `<p style='font-family:Calibri,sans-serif;font-size:10pt;color:#1a202c;margin:0 0 12pt'>${date}</p>`;
-  for (const para of paragraphs) {
-    const isSignOff = para.length < 80 && (/^(sincerely|regards|best|yours|thank|warm)/i.test(para) || /^kayla(\s+kwok)?$/i.test(para));
-    if (isSignOff) {
-      body += `<p style='font-family:Calibri,sans-serif;font-size:10pt;color:#1a202c;margin:6pt 0 2pt'>${para}</p>`;
-    } else {
-      body += `<p style='font-family:Calibri,sans-serif;font-size:10pt;color:#1a202c;line-height:1.6;text-align:justify;margin:0 0 10pt'>${para}</p>`;
-    }
-  }
-  const header = `<table style='width:100%;margin-bottom:20pt;border-bottom:2pt solid #b4944f;padding-bottom:8pt'><tr><td><p style='font-family:Calibri,sans-serif;font-size:16pt;font-weight:bold;color:#1c3678;margin:0'>KAYLA KWOK</p></td><td style='text-align:right'><p style='font-family:Calibri,sans-serif;font-size:8.5pt;color:#506070;margin:0'>Ontario, Canada | (437) 362-9928 | kaylakwok.km@gmail.com</p></td></tr></table>`;
-  const blob = new Blob([`<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='margin:1in;max-width:6.5in'>${header}${body}</body></html>`], { type: 'application/msword' });
-  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'Kayla_Kwok_CoverLetter_' + job.title.replace(/[^a-zA-Z0-9]/g, '_') + '.doc'; a.click(); URL.revokeObjectURL(url);
 };
 
 const runATSCheck = text => {
   const up = text.toUpperCase(), wc = text.split(/\s+/).filter(Boolean).length;
   const hasEmail = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text);
   const hasPhone = /\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/.test(text);
+  // Check for the 3-line job structure (job title line followed by company then location|date)
+  const hasCleanJobStructure = !text.match(/^.+\|.+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}/m);
   const c = (label, passed, pn, fn) => ({ label, passed, note: passed ? pn : fn });
   const checks = [
     c('Standard section headings', ['SUMMARY','EXPERIENCE','EDUCATION'].every(s => up.indexOf(s) >= 0), 'All key sections present', 'Missing key sections'),
     c('Contact info in body', hasEmail && hasPhone, 'Email and phone detected', (!hasEmail?'Email missing. ':'')+(!hasPhone?'Phone missing.':'')),
-    c('No special characters', !/[\u201c\u201d\u2018\u2019\u2013\u2014]/.test(text), 'No smart quotes found', 'Smart quotes detected'),
+    c('ATS job structure (title / company / location on separate lines)', hasCleanJobStructure, 'Each job uses 3-line ATS format', 'Job entries use pipe-merged lines — ATS may misparse'),
+    c('No special characters', !/[\u201c\u201d\u2018\u2019]/.test(text), 'No smart quotes found', 'Smart quotes detected'),
     c('Single-column layout', !text.split('\n').some(l => (l.match(/\|/g)||[]).length > 3), 'Single-column structure', 'Multi-column detected'),
     c('Readable date formats', /\b(19|20)\d{2}\b/.test(text), 'Year-based dates found', 'No readable dates found'),
-    c('Bullet points present', text.indexOf('-') >= 0 || text.indexOf('*') >= 0, 'Bullet formatting detected', 'No bullets found'),
+    c('Bullet points present', /^[-*•]/m.test(text), 'Bullet formatting detected', 'No bullets found'),
     c('ATS-safe fonts', true, 'Helvetica/Calibri used', ''),
     c('No images or graphics', true, 'Pure text output', ''),
     c('Optimal length', wc >= 150 && wc <= 900, wc+' words, optimal range', wc+' words, '+(wc<150?'too brief':'consider trimming')),
@@ -397,12 +321,7 @@ export default function App() {
   const [histDlPDF, setHistDlPDF] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [newJob, setNewJob] = useState({ title: '', company: '', location: 'Markham, ON', workMode: 'Hybrid', salary: '', description: '', applyLink: '' });
-  const [usage, setUsage] = useState({ scores: 0, rewrites: 0, coverLetters: 0 });
-  // Cover letter state
-  const [clCopyMsg, setClCopyMsg] = useState('');
-  const [clDlPDF, setClDlPDF] = useState(false);
-  const [histClCopy, setHistClCopy] = useState('');
-  const [histClDlPDF, setHistClDlPDF] = useState(false);
+  const [usage, setUsage] = useState({ scores: 0, rewrites: 0 });
 
   useEffect(() => {
     setApplications(loadApps());
@@ -411,8 +330,8 @@ export default function App() {
 
   const setStatus = (msg, ok = true, ms = 5000) => { setStatusMsg(msg); setStatusOk(ok); if (ms) setTimeout(() => setStatusMsg(''), ms); };
   const isApplied = id => applications.some(a => a.id === id);
-  const trackUsage = type => { setUsage(prev => { const u = { ...prev, [type]: (prev[type]||0)+1 }; localStorage.setItem('kayla_usage', JSON.stringify(u)); return u; }); };
-  const estCost = () => (((usage.scores||0)*0.01)+((usage.rewrites||0)*0.03)+((usage.coverLetters||0)*0.02)).toFixed(2);
+  const trackUsage = type => { setUsage(prev => { const u = { ...prev, [type]: prev[type]+1 }; localStorage.setItem('kayla_usage', JSON.stringify(u)); return u; }); };
+  const estCost = () => ((usage.scores*0.01)+(usage.rewrites*0.03)).toFixed(2);
   const estRemaining = () => Math.max(0, 5-parseFloat(estCost())).toFixed(2);
 
   const fetchJobs = useCallback(async () => {
@@ -462,34 +381,12 @@ export default function App() {
     finally { setAiLoading(p => ({...p,[job.id]:null})); }
   };
 
-  const generateCoverLetter = async job => {
-    const resume = ai[job.id]?.rewrite || RESUME;
-    setAiLoading(p => ({...p,[job.id]:'cover'}));
-    try {
-      const r = await fetch('/api/cover-letter', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({job,resume}) });
-      const data = await r.json(); if (data.error) throw new Error(data.error);
-      setAi(p => ({...p,[job.id]:{...p[job.id],coverLetter:data.result}}));
-      trackUsage('coverLetters');
-    } catch(e) { alert('Cover letter failed: '+e.message); }
-    finally { setAiLoading(p => ({...p,[job.id]:null})); }
-  };
-
   const handleApply = async job => {
     const prev = applications.find(a => a.id === job.id);
     if (prev) { setApplyMsg('Already applied on '+fmtDate(prev.appliedAt)); setTimeout(()=>setApplyMsg(''),3000); }
     else {
       const aiData = ai[job.id]||{};
-      const entry = {
-        id:job.id, title:job.title, company:job.company, location:job.location,
-        workMode:job.workMode, salary:job.salary, source:job.source, posted:job.posted,
-        applyLink:job.applyLink, appliedAt:new Date().toISOString(),
-        resume:aiData.rewrite||'',
-        coverLetter:aiData.coverLetter||'',
-        recruiterScore:aiData.score?.recruiter_score||null,
-        atsScore:aiData.score?.ats_score||null,
-        atsCheckPassed:aiData.ats?.passed||false,
-        recommendation:aiData.score?.recommendation||null,
-      };
+      const entry = { id:job.id, title:job.title, company:job.company, location:job.location, workMode:job.workMode, salary:job.salary, source:job.source, posted:job.posted, applyLink:job.applyLink, appliedAt:new Date().toISOString(), resume:aiData.rewrite||'', recruiterScore:aiData.score?.recruiter_score||null, atsScore:aiData.score?.ats_score||null, atsCheckPassed:aiData.ats?.passed||false, recommendation:aiData.score?.recommendation||null };
       const updated = [entry,...applications]; setApplications(updated); saveApps(updated);
       setApplyMsg('Saved to Application History'); setTimeout(()=>setApplyMsg(''),3000);
     }
@@ -533,7 +430,7 @@ export default function App() {
         )}
       </div>
 
-      {(usage.scores>0||usage.rewrites>0||usage.coverLetters>0)&&(
+      {(usage.scores>0||usage.rewrites>0)&&(
         <div style={{background:'#0f172a',borderBottom:'1px solid #1e293b',padding:'5px 20px',display:'flex',alignItems:'center',gap:14,flexShrink:0}}>
           <div style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>API Credit</div>
           <div style={{flex:1,height:4,background:'#1e293b',borderRadius:2,overflow:'hidden'}}>
@@ -541,7 +438,7 @@ export default function App() {
           </div>
           <div style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>
             <span style={{color:budgetPct<50?'#16a34a':budgetPct<80?'#d97706':'#dc2626',fontWeight:700}}>${spent}</span> of $5.00
-            &nbsp;|&nbsp;{usage.scores} scores, {usage.rewrites} rewrites, {usage.coverLetters||0} letters
+            &nbsp;|&nbsp;{usage.scores} scores, {usage.rewrites} rewrites
             &nbsp;|&nbsp;<span style={{color:remaining>1?'#16a34a':'#d97706',fontWeight:600}}>${remaining} left</span>
             {remaining<0.5&&<span style={{color:'#dc2626',fontWeight:700}}> - top up soon</span>}
           </div>
@@ -661,7 +558,7 @@ export default function App() {
                   );
                 })()}
                 {tab==='resume'&&(()=>{
-                  const rw=ai[sel.id]?.rewrite,ats=ai[sel.id]?.ats,cl=ai[sel.id]?.coverLetter;
+                  const rw=ai[sel.id]?.rewrite,ats=ai[sel.id]?.ats;
                   if(!rw) return <div style={{textAlign:'center',padding:48,color:'#94a3b8'}}><div style={{fontSize:14,marginBottom:8,fontWeight:600,color:'#64748b'}}>No tailored resume yet</div><Btn onClick={()=>rewriteJob(sel)} disabled={!!aiLoading[sel.id]} color='#7c3aed'>{aiLoading[sel.id]==='rewriting'?'Writing...':'Generate Tailored Resume'}</Btn></div>;
                   return(
                     <div>
@@ -681,46 +578,17 @@ export default function App() {
                               <button onClick={()=>setAtsExpanded(p=>!p)} style={{padding:'4px 10px',borderRadius:6,border:'1px solid #e2e8f0',background:'white',fontSize:11,fontWeight:600,cursor:'pointer'}}>{atsExpanded?'Hide':'Details'}</button>
                             </div>
                           </div>
-                          {atsExpanded&&(<div style={{background:'white',padding:'8px 14px 4px'}}>{ats.checks.map((chk,i)=>(<div key={i} style={{display:'flex',gap:10,padding:'7px 0',borderBottom:i<ats.checks.length-1?'1px solid #f8fafc':'none',alignItems:'flex-start'}}><span style={{fontSize:14,fontWeight:800,color:chk.passed?'#16a34a':'#dc2626',flexShrink:0,marginTop:1}}>{chk.passed?'v':'x'}</span><div><div style={{fontSize:12,fontWeight:600}}>{chk.label}</div><div style={{fontSize:11,color:chk.passed?'#64748b':'#dc2626',marginTop:1,lineHeight:1.4}}>{chk.note}</div></div></div>))}</div>)}
+                          {atsExpanded&&(<div style={{background:'white',padding:'8px 14px 4px'}}>{ats.checks.map((chk,i)=>(<div key={i} style={{display:'flex',gap:10,padding:'7px 0',borderBottom:i<ats.checks.length-1?'1px solid #f8fafc':'none',alignItems:'flex-start'}}><span style={{fontSize:14,fontWeight:800,color:chk.passed?'#16a34a':'#dc2626',flexShrink:0,marginTop:1}}>{chk.passed?'✓':'✗'}</span><div><div style={{fontSize:12,fontWeight:600}}>{chk.label}</div><div style={{fontSize:11,color:chk.passed?'#64748b':'#dc2626',marginTop:1,lineHeight:1.4}}>{chk.note}</div></div></div>))}</div>)}
                         </div>
                       )}
                       <div style={{background:'#1c3678',borderRadius:12,padding:'14px 18px',marginBottom:14,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
                         <div><div style={{color:'white',fontWeight:700,fontSize:13,marginBottom:2}}>Download Resume</div><div style={{color:'#93c5fd',fontSize:11}}>Professional format, ready to send</div></div>
                         <div style={{display:'flex',gap:8}}>
-                          <button onClick={()=>generatePDF(rw,sel,setDlPDF)} disabled={dlPDF} style={{padding:'8px 16px',borderRadius:8,border:'2px solid white',background:'white',color:'#1c3678',fontWeight:700,fontSize:12,cursor:dlPDF?'wait':'pointer',opacity:dlPDF?0.7:1}}>{dlPDF?'Generating...':'PDF'+(ats?.passed?' (ATS OK)':'')}</button>
-                          <button onClick={()=>generateWord(rw,sel)} style={{padding:'8px 16px',borderRadius:8,border:'2px solid rgba(255,255,255,0.4)',background:'rgba(255,255,255,0.12)',color:'white',fontWeight:700,fontSize:12,cursor:'pointer'}}>{'Word'+(ats?.passed?' (ATS OK)':'')}</button>
+                          <button onClick={()=>generatePDF(rw,sel,setDlPDF)} disabled={dlPDF} style={{padding:'8px 16px',borderRadius:8,border:'2px solid white',background:'white',color:'#1c3678',fontWeight:700,fontSize:12,cursor:dlPDF?'wait':'pointer',opacity:dlPDF?0.7:1}}>{dlPDF?'Generating...':'PDF'+(ats?.passed?' ✓':'')}</button>
+                          <button onClick={()=>generateWord(rw,sel)} style={{padding:'8px 16px',borderRadius:8,border:'2px solid rgba(255,255,255,0.4)',background:'rgba(255,255,255,0.12)',color:'white',fontWeight:700,fontSize:12,cursor:'pointer'}}>{'Word'+(ats?.passed?' ✓':'')}</button>
                         </div>
                       </div>
-                      <div style={{background:'#fafafa',border:'1px solid #e2e8f0',borderRadius:10,padding:16,fontSize:12,lineHeight:1.85,color:'#1e293b',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:340,overflow:'auto',marginBottom:16}}>{rw}</div>
-
-                      {/* ── Cover Letter Section ── */}
-                      <div style={{borderTop:'2px solid #e2e8f0',paddingTop:16}}>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-                          <div>
-                            <div style={{fontWeight:700,fontSize:13,color:'#0f172a'}}>Cover Letter</div>
-                            <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>AI-tailored tone based on company type</div>
-                          </div>
-                          <Btn
-                            onClick={()=>generateCoverLetter(sel)}
-                            disabled={!!aiLoading[sel.id]}
-                            color='#0d9488'
-                            style={{fontSize:12}}
-                          >
-                            {aiLoading[sel.id]==='cover'?'Writing...':cl?'Regenerate':'Generate Cover Letter'}
-                          </Btn>
-                        </div>
-
-                        {cl&&(
-                          <div>
-                            <div style={{display:'flex',gap:6,marginBottom:10,flexWrap:'wrap'}}>
-                              <button onClick={()=>{navigator.clipboard.writeText(cl);setClCopyMsg('Copied!');setTimeout(()=>setClCopyMsg(''),2000);}} style={{padding:'6px 12px',borderRadius:6,border:'1px solid #e2e8f0',background:clCopyMsg?'#f0fdf4':'white',fontSize:11,cursor:'pointer',color:clCopyMsg?'#166534':'#475569',fontWeight:600}}>{clCopyMsg||'Copy'}</button>
-                              <button onClick={()=>generateCoverLetterPDF(cl,sel,setClDlPDF)} disabled={clDlPDF} style={{padding:'6px 12px',borderRadius:6,border:'none',background:'#0d9488',color:'white',fontSize:11,cursor:clDlPDF?'wait':'pointer',fontWeight:600,opacity:clDlPDF?0.7:1}}>{clDlPDF?'Generating...':'PDF'}</button>
-                              <button onClick={()=>generateCoverLetterWord(cl,sel)} style={{padding:'6px 12px',borderRadius:6,border:'none',background:'#475569',color:'white',fontSize:11,cursor:'pointer',fontWeight:600}}>Word</button>
-                            </div>
-                            <div style={{background:'#f0fdfa',border:'1px solid #99f6e4',borderRadius:10,padding:16,fontSize:12,lineHeight:1.9,color:'#1e293b',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:380,overflow:'auto'}}>{cl}</div>
-                          </div>
-                        )}
-                      </div>
+                      <div style={{background:'#fafafa',border:'1px solid #e2e8f0',borderRadius:10,padding:16,fontSize:12,lineHeight:1.85,color:'#1e293b',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:380,overflow:'auto'}}>{rw}</div>
                     </div>
                   );
                 })()}
@@ -748,7 +616,7 @@ export default function App() {
           ):(
             <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,0.08)'}}>
               <table style={{width:'100%',borderCollapse:'collapse'}}>
-                <thead><tr style={{background:'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>{['Position','Company','Mode','Applied','Score','ATS','Docs',''].map(h=><th key={h} style={{padding:'10px 16px',textAlign:'left',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.06em',whiteSpace:'nowrap'}}>{h}</th>)}</tr></thead>
+                <thead><tr style={{background:'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>{['Position','Company','Mode','Applied','Score','ATS','Resume',''].map(h=><th key={h} style={{padding:'10px 16px',textAlign:'left',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.06em',whiteSpace:'nowrap'}}>{h}</th>)}</tr></thead>
                 <tbody>
                   {applications.map((a,i)=>{
                     const isH=histSel?.id===a.id;
@@ -760,51 +628,22 @@ export default function App() {
                           <td style={{padding:'12px 16px'}}><span style={modeStyle(a.workMode)}>{a.workMode}</span></td>
                           <td style={{padding:'12px 16px',fontSize:12,color:'#64748b',whiteSpace:'nowrap'}}>{fmtDate(a.appliedAt)}</td>
                           <td style={{padding:'12px 16px'}}>{a.recruiterScore?<span style={{fontSize:14,fontWeight:800,color:scoreColor(a.recruiterScore)}}>{a.recruiterScore}%</span>:<span style={{color:'#cbd5e1'}}>--</span>}</td>
-                          <td style={{padding:'12px 16px'}}>{a.atsCheckPassed?<span style={{color:'#16a34a',fontWeight:800}}>OK</span>:<span style={{color:'#94a3b8'}}>--</span>}</td>
-                          <td style={{padding:'12px 16px'}}>
-                            <div style={{display:'flex',gap:4}}>
-                              {a.resume&&<span style={{fontSize:10,background:'#eff6ff',color:'#3b82f6',padding:'2px 7px',borderRadius:8,fontWeight:700}}>CV</span>}
-                              {a.coverLetter&&<span style={{fontSize:10,background:'#f0fdfa',color:'#0d9488',padding:'2px 7px',borderRadius:8,fontWeight:700}}>CL</span>}
-                              {!a.resume&&!a.coverLetter&&<span style={{color:'#cbd5e1',fontSize:11}}>None</span>}
-                            </div>
-                          </td>
+                          <td style={{padding:'12px 16px'}}>{a.atsCheckPassed?<span style={{color:'#16a34a',fontWeight:800}}>✓</span>:<span style={{color:'#94a3b8'}}>--</span>}</td>
+                          <td style={{padding:'12px 16px'}}>{a.resume?<span style={{color:'#3b82f6',fontSize:12,fontWeight:600}}>{isH?'Hide':'View'}</span>:<span style={{color:'#cbd5e1',fontSize:11}}>None</span>}</td>
                           <td style={{padding:'12px 12px'}}><button onClick={e=>{e.stopPropagation();deleteApp(a.id);}} style={{padding:'4px 8px',borderRadius:6,border:'1px solid #fee2e2',background:'#fef2f2',color:'#dc2626',fontSize:11,cursor:'pointer',fontWeight:600}}>Del</button></td>
                         </tr>
-                        {isH&&(a.resume||a.coverLetter)&&(
+                        {isH&&a.resume&&(
                           <tr><td colSpan={8} style={{padding:'0 16px 16px',background:'#eff6ff',borderBottom:'1px solid #e2e8f0'}}>
                             <div style={{background:'white',borderRadius:10,border:'1px solid #e2e8f0',padding:16}}>
-                              <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>{a.title} at {a.company}</div>
-                              <div style={{fontSize:11,color:'#64748b',marginBottom:14}}>Applied {fmtDate(a.appliedAt)}{a.atsCheckPassed?' · ATS Ready':''}</div>
-
-                              {/* Resume section */}
-                              {a.resume&&(
-                                <div style={{marginBottom:a.coverLetter?20:0}}>
-                                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                                    <div style={{fontSize:12,fontWeight:700,color:'#1e293b'}}>Resume</div>
-                                    <div style={{display:'flex',gap:6}}>
-                                      <button onClick={()=>{navigator.clipboard.writeText(a.resume);setHistCopy('Copied!');setTimeout(()=>setHistCopy(''),2000);}} style={{padding:'5px 10px',borderRadius:6,border:'1px solid #e2e8f0',background:histCopy?'#f0fdf4':'white',fontSize:11,cursor:'pointer',color:histCopy?'#166534':'#475569',fontWeight:600}}>{histCopy||'Copy'}</button>
-                                      <button onClick={()=>generatePDF(a.resume,a,setHistDlPDF)} disabled={histDlPDF} style={{padding:'5px 10px',borderRadius:6,border:'none',background:'#1c3678',color:'white',fontSize:11,cursor:histDlPDF?'wait':'pointer',fontWeight:600}}>{histDlPDF?'...':'PDF'}</button>
-                                      <button onClick={()=>generateWord(a.resume,a)} style={{padding:'5px 10px',borderRadius:6,border:'none',background:'#475569',color:'white',fontSize:11,cursor:'pointer',fontWeight:600}}>Word</button>
-                                    </div>
-                                  </div>
-                                  <div style={{fontSize:11,lineHeight:1.8,color:'#374151',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:260,overflow:'auto',background:'#fafafa',padding:12,borderRadius:8}}>{a.resume}</div>
+                              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+                                <div><div style={{fontWeight:700,fontSize:13}}>{a.title} at {a.company}</div><div style={{fontSize:11,color:'#64748b',marginTop:2}}>Applied {fmtDate(a.appliedAt)}{a.atsCheckPassed?' - ATS Ready':''}</div></div>
+                                <div style={{display:'flex',gap:8}}>
+                                  <button onClick={()=>{navigator.clipboard.writeText(a.resume);setHistCopy('Copied!');setTimeout(()=>setHistCopy(''),2000);}} style={{padding:'6px 12px',borderRadius:6,border:'1px solid #e2e8f0',background:histCopy?'#f0fdf4':'white',fontSize:11,cursor:'pointer',color:histCopy?'#166534':'#475569',fontWeight:600}}>{histCopy||'Copy'}</button>
+                                  <button onClick={()=>generatePDF(a.resume,a,setHistDlPDF)} disabled={histDlPDF} style={{padding:'6px 12px',borderRadius:6,border:'none',background:'#1c3678',color:'white',fontSize:11,cursor:histDlPDF?'wait':'pointer',fontWeight:600}}>{histDlPDF?'...':'PDF'}</button>
+                                  <button onClick={()=>generateWord(a.resume,a)} style={{padding:'6px 12px',borderRadius:6,border:'none',background:'#475569',color:'white',fontSize:11,cursor:'pointer',fontWeight:600}}>Word</button>
                                 </div>
-                              )}
-
-                              {/* Cover letter section */}
-                              {a.coverLetter&&(
-                                <div>
-                                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                                    <div style={{fontSize:12,fontWeight:700,color:'#0d9488'}}>Cover Letter</div>
-                                    <div style={{display:'flex',gap:6}}>
-                                      <button onClick={()=>{navigator.clipboard.writeText(a.coverLetter);setHistClCopy('Copied!');setTimeout(()=>setHistClCopy(''),2000);}} style={{padding:'5px 10px',borderRadius:6,border:'1px solid #e2e8f0',background:histClCopy?'#f0fdf4':'white',fontSize:11,cursor:'pointer',color:histClCopy?'#166534':'#475569',fontWeight:600}}>{histClCopy||'Copy'}</button>
-                                      <button onClick={()=>generateCoverLetterPDF(a.coverLetter,a,setHistClDlPDF)} disabled={histClDlPDF} style={{padding:'5px 10px',borderRadius:6,border:'none',background:'#0d9488',color:'white',fontSize:11,cursor:histClDlPDF?'wait':'pointer',fontWeight:600}}>{histClDlPDF?'...':'PDF'}</button>
-                                      <button onClick={()=>generateCoverLetterWord(a.coverLetter,a)} style={{padding:'5px 10px',borderRadius:6,border:'none',background:'#475569',color:'white',fontSize:11,cursor:'pointer',fontWeight:600}}>Word</button>
-                                    </div>
-                                  </div>
-                                  <div style={{fontSize:11,lineHeight:1.9,color:'#374151',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:260,overflow:'auto',background:'#f0fdfa',padding:12,borderRadius:8,border:'1px solid #99f6e4'}}>{a.coverLetter}</div>
-                                </div>
-                              )}
+                              </div>
+                              <div style={{fontSize:11,lineHeight:1.8,color:'#374151',whiteSpace:'pre-wrap',fontFamily:'ui-monospace,monospace',maxHeight:320,overflow:'auto',background:'#fafafa',padding:12,borderRadius:8}}>{a.resume}</div>
                             </div>
                           </td></tr>
                         )}
