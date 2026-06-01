@@ -224,7 +224,8 @@ const generatePDF = async (resumeText, job, setDl) => {
         // body text (e.g. core skills line, education lines)
         doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...INK);
         const hasManyPipes = (line.match(/\|/g)||[]).length > 3;
-        const display = hasManyPipes ? line : sentCase(line);
+        const isDegLine = DEGREE_PAT.test(line);
+        const display = (hasManyPipes || isDegLine) ? line : sentCase(line);
         const wrp = split(display, uw); chk(wrp.length*4.5);
         putJustified(wrp, ml, y, 4.5, uw); y += wrp.length*4.5+0.8;
       }
@@ -272,7 +273,8 @@ const generateWord = (resumeText, job) => {
       html += "<p style='font-family:Calibri,sans-serif;font-size:9pt;font-style:italic;color:#506070;margin:0 0 4pt'>" + line + "</p>";
     } else {
       const hasManyPipes = (line.match(/\|/g)||[]).length > 3;
-      html += "<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0;color:#1a202c;line-height:1.5;text-align:justify'>" + (hasManyPipes ? line : sentCase(line)) + "</p>";
+      const isDegLine = DEGREE_PAT.test(line);
+      html += "<p style='font-family:Calibri,sans-serif;font-size:10pt;margin:2pt 0;color:#1a202c;line-height:1.5;text-align:justify'>" + ((hasManyPipes || isDegLine) ? line : sentCase(line)) + "</p>";
     }
   }
   const blob = new Blob(["<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='margin:1in;max-width:7in'>" + html + "</body></html>"], { type: 'application/msword' });
