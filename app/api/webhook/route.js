@@ -10,7 +10,7 @@ const redis = new Redis({
 const parseLinkedInJobs = (body) => {
   if (!body) return [];
   const jobs = [];
-  const lines = body.split('\n').map(l => l.trim()).filter(Boolean);
+  const lines = body.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
@@ -53,30 +53,29 @@ const parseLinkedInJobs = (body) => {
 };
 
 // ── INDEED PARSER ─────────────────────────────────────────────────────────────
-// Indeed plain-text format (Zapier Body Plain from HTML email):
+// Actual Indeed plain-text format (confirmed from live email):
 //   Operations Manager
-//   Maple Bear Global Schools 3.7        ← company + star rating number
-//   Toronto, ON
-//   $90,000–$100,000 a year              ← optional salary
-//   Easily apply                         ← noise
-//
-const cleanCompany = (s) => s.replace(/\s+\d+\.\d+\s*[★\*]?\s*$/, '').trim();
+//   Maple Bear Global Schools - Toronto, ON   ← company + location on ONE line separated by ' - '
+//   $90,000–$100,000 a year                   ← optional salary
+//   Easily apply                              ← noise
+//   7 days ago                                ← noise
+//   https://ca.indeed.com/...                 ← apply link
+
+// Matches "Company Name - City, ON" at end of line
+const INDEED_COMP_LOC = /\s+-\s+([A-Z][a-zA-Z\s\-\.]+,\s*(ON|BC|AB|QC|MB|SK|NS|NB|PE|NL|NT|YT|NU)|Remote|Canada)\s*$/;
+
+const cleanCompany = (s) => s.replace(/\s+\d+\.\d+\s*[★*]?\s*$/, '').trim();
 
 const isIndeedNoise = (l) =>
   !l || /^\d+\s+new\s+/i.test(l) || /^refined by/i.test(l) ||
   /^these job ads/i.test(l) || /^see all/i.test(l) ||
   /^unsubscribe/i.test(l) || /^easily apply/i.test(l) ||
   /^(full-time|part-time|contract|permanent|temporary|casual)$/i.test(l) ||
+  /^\d+\s+(days?|hours?|minutes?)\s+ago/i.test(l) ||
   /^new (today|this week)/i.test(l) || /^sponsored$/i.test(l) ||
   /^indeed/i.test(l) || /^©/.test(l) || l.startsWith('http') ||
   /^view (this )?job/i.test(l) || /^apply now/i.test(l) ||
   /^help$/i.test(l) || /^privacy/i.test(l);
-
-const isIndeedLocation = (l) =>
-  /^[A-Z][a-zA-Z\s\-]+,\s*(ON|BC|AB|QC|MB|SK|NS|NB|PE|NL|NT|YT|NU)$/.test(l) ||
-  /\bRemote\b/i.test(l) ||
-  /^[A-Z][a-zA-Z\s]+,\s*(Ontario|British Columbia|Alberta|Quebec|Manitoba|Saskatchewan|Nova Scotia)/i.test(l) ||
-  /^Canada$/.test(l);
 
 const isIndeedSalary = (l) =>
   /\$[\d,]/.test(l) || /\d+\s*(a year|an hour|\/hr|\/yr)/i.test(l);
@@ -84,47 +83,39 @@ const isIndeedSalary = (l) =>
 const parseIndeedJobs = (body) => {
   if (!body) return [];
   const jobs = [];
-  const lines = body.split('\n').map(l => l.trim()).filter(Boolean);
+  const lines = body.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
 
-    // Skip noise, location-only lines, salary-only lines
-    if (isIndeedNoise(line) || isIndeedLocation(line) || isIndeedSalary(line)) { i++; continue; }
+    // Skip noise and salary-only lines
+    if (isIndeedNoise(line) || isIndeedSalary(line)) { i++; continue; }
 
-    // Potential job title — look ahead for company then location
+    // Look for next line matching "Company - Location" pattern
     if (i + 1 < lines.length) {
       const nextLine = lines[i + 1];
-      const isCompany = !isIndeedNoise(nextLine) && !isIndeedLocation(nextLine) &&
-        !isIndeedSalary(nextLine) && nextLine.length > 1 && nextLine.length < 100;
+      const compLocMatch = nextLine.match(INDEED_COMP_LOC);
 
-      if (isCompany) {
-        // Find location in next few lines
-        let locationIdx = -1;
-        for (let k = i + 2; k < Math.min(i + 6, lines.length); k++) {
-          if (isIndeedLocation(lines[k])) { locationIdx = k; break; }
-        }
+      if (compLocMatch && !isIndeedNoise(nextLine) && !isIndeedSalary(nextLine)) {
+        const company = cleanCompany(nextLine.replace(INDEED_COMP_LOC, '').trim());
+        const location = compLocMatch[1].trim();
 
-        if (locationIdx !== -1) {
-          // Validate title: short enough, no sentence punctuation
-          const wordCount = line.split(' ').length;
-          if (wordCount <= 10 && line.length < 100 && !line.includes('@') && !/^\d/.test(line)) {
-            // Find salary after location
-            let salary = 'Not listed';
-            for (let k = locationIdx + 1; k < Math.min(locationIdx + 4, lines.length); k++) {
-              if (isIndeedSalary(lines[k])) { salary = lines[k]; break; }
+        // Validate as job title: short enough, no email, doesn't start with digit
+        const wordCount = line.split(' ').length;
+        if (wordCount <= 12 && line.length < 100 && !line.includes('@') && !/^\d/.test(line)) {
+          // Find salary and apply link in next few lines
+          let salary = 'Not listed';
+          let applyLink = '#';
+          for (let k = i + 2; k < Math.min(i + 7, lines.length); k++) {
+            if (isIndeedSalary(lines[k]) && salary === 'Not listed') salary = lines[k];
+            if (lines[k].startsWith('http') && lines[k].includes('indeed.com')) {
+              applyLink = lines[k].trim(); break;
             }
-            jobs.push({
-              title: line.trim(),
-              company: cleanCompany(nextLine),
-              location: lines[locationIdx].trim(),
-              salary,
-              applyLink: '#', // Indeed plain text doesn't include direct links
-            });
-            i = locationIdx + 1;
-            continue;
           }
+          jobs.push({ title: line.trim(), company, location, salary, applyLink });
+          i += 2;
+          continue;
         }
       }
     }
@@ -133,11 +124,11 @@ const parseIndeedJobs = (body) => {
   return jobs;
 };
 
-// ── DEDUP FINGERPRINT ─────────────────────────────────────────────────────────
+// ── DEDUP ─────────────────────────────────────────────────────────────────────
 const jobFingerprint = (title, company) =>
   (title + '|' + company).toLowerCase().replace(/[^a-z0-9|]/g, '').trim();
 
-// ── WEBHOOK HANDLER ───────────────────────────────────────────────────────────
+// ── WEBHOOK ───────────────────────────────────────────────────────────────────
 export async function POST(req) {
   try {
     const secret = req.headers.get('x-webhook-secret');
@@ -155,10 +146,8 @@ export async function POST(req) {
       receivedAt: new Date().toISOString(),
       source,
       title: body.title || '',
-      location: body.location || '',
       bodyLength: (body.description || '').length,
-      bodyPreview: (body.description || '').substring(0, 800),
-      bodyLines: (body.description || '').split('\n').slice(0, 40),
+      bodyLines: (body.description || '').split(/\r?\n/).slice(0, 40),
     }, ...existingDebug].slice(0, 5));
 
     const existing = (await redis.get('kayla_alert_jobs')) || [];
@@ -196,19 +185,18 @@ export async function POST(req) {
           .map(p => ({
             id: 'alert_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
             title: p.title, company: p.company,
-            location: p.location || body.location || 'Toronto, ON',
+            location: p.location || 'Toronto, ON',
             workMode: /remote/i.test(p.location) ? 'Remote' : 'On-site',
             salary: p.salary || 'Not listed',
             posted: new Date().toISOString(),
             description: body.description || '',
-            applyLink: '#', source,
+            applyLink: p.applyLink || '#', source,
           }));
       } else {
-        // Parsing yielded nothing — store raw so it's not silently lost
-        // Strip "X new jobs for:" prefix from subject to get search term
+        // Body parsing yielded nothing — store as single raw entry so it's not lost
         const rawTitle = (body.title || '')
-          .replace(/^.+?is hiring for\s+/i, '')   // "Maple Bear... is hiring for Operations Manager + ..."
-          .replace(/\s*\+\s*\d+.*$/i, '')          // remove "+ 30 new manager jobs in Thornhill, ON"
+          .replace(/^.+?is hiring for\s+/i, '')
+          .replace(/\s*\+\s*\d+.*$/i, '')
           .trim() || 'Indeed Job Alert';
         const fp = jobFingerprint(rawTitle, 'Indeed');
         if (!existingFPs.has(fp)) {
@@ -242,7 +230,10 @@ export async function POST(req) {
     const updated = [...newJobs, ...existing].slice(0, 200);
     await redis.set('kayla_alert_jobs', updated);
 
-    return NextResponse.json({ ok: true, added: newJobs.length, parsed: parsedCount, jobs: newJobs.map(j => ({ title: j.title, company: j.company })) });
+    return NextResponse.json({
+      ok: true, added: newJobs.length, parsed: parsedCount,
+      jobs: newJobs.map(j => ({ title: j.title, company: j.company, location: j.location, salary: j.salary })),
+    });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
