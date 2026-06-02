@@ -349,11 +349,19 @@ export default function App() {
     try {
       const r = await fetch('/api/jobs'); const d = await r.json();
       if (d.data && d.data.length > 0) {
-        const seen = new Set();
+        const seenIds = new Set();
+        const seenFingerprints = new Set();
         const incoming = d.data
           .filter(j => {
             const id = j.job_id || j.id;
-            return !seen.has(id) && seen.add(id);
+            // Deduplicate by ID
+            if (id && seenIds.has(id)) return false;
+            if (id) seenIds.add(id);
+            // Also deduplicate by title+company fingerprint (catches same job from different sources/queries)
+            const fp = ((j.job_title || j.title || '') + '|' + (j.employer_name || j.company || '')).toLowerCase().replace(/[^a-z0-9|]/g, '');
+            if (seenFingerprints.has(fp)) return false;
+            seenFingerprints.add(fp);
+            return true;
           })
           .map(j => j.source ? j : txJob(j))
           .filter(j => j.title)
