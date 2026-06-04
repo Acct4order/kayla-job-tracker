@@ -650,6 +650,13 @@ export default function App() {
                         <span style={{fontSize:16}}>⚡</span>
                         <span style={{fontSize:11,color:'#0f766e',fontWeight:600}}>Written to land in the first 6 seconds — hook, proof, insight, match, differentiator</span>
                       </div>
+                      <div style={{background:'#1c3678',borderRadius:12,padding:'14px 18px',marginBottom:14,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+                        <div><div style={{color:'white',fontWeight:700,fontSize:13,marginBottom:2}}>Download Cover Letter</div><div style={{color:'#93c5fd',fontSize:11}}>Professional format, ready to send</div></div>
+                        <div style={{display:'flex',gap:8}}>
+                          <button onClick={()=>generatePDF(cl,sel,setDlPDF)} disabled={dlPDF} style={{padding:'8px 16px',borderRadius:8,border:'2px solid white',background:'white',color:'#1c3678',fontWeight:700,fontSize:12,cursor:dlPDF?'wait':'pointer',opacity:dlPDF?0.7:1}}>{dlPDF?'Generating...':'PDF'}</button>
+                          <button onClick={()=>generateWord(cl,sel)} style={{padding:'8px 16px',borderRadius:8,border:'2px solid rgba(255,255,255,0.4)',background:'rgba(255,255,255,0.12)',color:'white',fontWeight:700,fontSize:12,cursor:'pointer'}}>Word</button>
+                        </div>
+                      </div>
                       <div style={{background:'#fafafa',border:'1px solid #e2e8f0',borderRadius:10,padding:20,fontSize:13,lineHeight:2,color:'#1e293b',whiteSpace:'pre-wrap',maxHeight:440,overflow:'auto'}}>{cl}</div>
                     </div>
                   );
