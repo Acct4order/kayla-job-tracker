@@ -334,6 +334,7 @@ export default function App() {
   const [histSel, setHistSel] = useState(null);
   const [histCopy, setHistCopy] = useState('');
   const [histDlPDF, setHistDlPDF] = useState(false);
+  const [coverCopy, setCoverCopy] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [newJob, setNewJob] = useState({ title: '', company: '', location: 'Markham, ON', workMode: 'Hybrid', salary: '', description: '', applyLink: '' });
   const [usage, setUsage] = useState({ scores: 0, rewrites: 0, covers: 0 });
@@ -629,7 +630,6 @@ export default function App() {
                 })()}
                 {tab==='cover'&&(()=>{
                   const cl=ai[sel.id]?.cover;
-                  const [coverCopy,setCoverCopy] = React.useState('');
                   if(!cl) return(
                     <div style={{textAlign:'center',padding:48,color:'#94a3b8'}}>
                       <div style={{fontSize:14,marginBottom:6,fontWeight:600,color:'#64748b'}}>No cover letter yet</div>
