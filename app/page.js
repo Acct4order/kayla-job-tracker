@@ -9,14 +9,14 @@ const RESUME = `Kayla Kwok
 Ontario, Canada | (437) 362-9928 | kaylakwok.km@gmail.com
 
 PROFESSIONAL SUMMARY
-Senior public sector executive with over 10 years of progressive leadership experience across multi-site operations, strategic planning, budget management, human resources, regulatory compliance, and Board-level governance. Managed an annual operating budget of HKD 10,000,000 (approx. CAD $1,800,000) across a 12-clinic public health network, with signing authority for project and procurement approvals up to HKD 800,000 (approx. CAD $145,000). Led unionized workforce management for 400+ employees, presented strategic initiatives to City Council, and served as EMR system administrator across 12 clinic locations. Holds an LLB and CESGA certification. Fluent in English, Cantonese, and Mandarin. Based in Ontario, Canada.
+Senior public sector executive with over 10 years of progressive leadership experience across multi-site operations, strategic planning, budget management, human resources, regulatory compliance, and Board-level governance. Managed an annual operating budget of HKD 10,000,000 (approx. approx. 1.8 million CAD) across a 12-clinic public health network, with signing authority for project and procurement approvals up to HKD 800,000 (approx. approx. 145,000 CAD). Led unionized workforce management for 400+ employees, presented strategic initiatives to City Council, and served as EMR system administrator across 12 clinic locations. Holds an LLB and CESGA certification. Fluent in English, Cantonese, and Mandarin. Based in Ontario, Canada.
 
 EDUCATION AND CERTIFICATIONS
 LLB (Bachelor of Laws) | The Chinese University of Hong Kong, 2013
 CESGA, Certified ESG Analyst | EFFAS, Apr 2024
 
 CORE SKILLS
-Executive Leadership and Strategic Planning, Board and Committee Governance, Budget Planning and Financial Oversight (CAD $1.8M), Signing Authority and Procurement Approval, Unionized Workforce Management, Human Resources and Performance Management, Regulatory and Legal Compliance, Multi-site Operations Management, Cross-functional Team Leadership, EMR System Administration, Quality Improvement, Process Improvement and Organizational Change, Executive Administrative Support, Complex Calendar and Travel Management, Event Planning and Coordination, Stakeholder Engagement, Policy Development, Microsoft Office 365, Zoom, Microsoft Teams, Google Workspace, CCH iFirm, Trilingual Communication (English, Cantonese, Mandarin)
+Executive Leadership and Strategic Planning, Board and Committee Governance, Budget Planning and Financial Oversight (approx. CAD 1.8M), Signing Authority and Procurement Approval, Unionized Workforce Management, Human Resources and Performance Management, Regulatory and Legal Compliance, Multi-site Operations Management, Cross-functional Team Leadership, EMR System Administration, Quality Improvement, Process Improvement and Organizational Change, Executive Administrative Support, Complex Calendar and Travel Management, Event Planning and Coordination, Stakeholder Engagement, Policy Development, Microsoft Office 365, Zoom, Microsoft Teams, Google Workspace, CCH iFirm, Trilingual Communication (English, Cantonese, Mandarin)
 
 PROFESSIONAL EXPERIENCE
 
@@ -49,7 +49,7 @@ Operations Manager
 HK Government, Department of Health
 Hong Kong | Jul 2015 – Sep 2018
 - Oversaw executive-level operations of 12 public health clinics serving 500,000+ patients annually
-- Planned and managed annual operating budget of HKD 10,000,000 (approx. CAD $1,800,000), with signing authority for project and procurement approvals up to HKD 800,000 (approx. CAD $145,000)
+- Planned and managed annual operating budget of HKD 10,000,000 (approx. approx. 1.8 million CAD), with signing authority for project and procurement approvals up to HKD 800,000 (approx. approx. 145,000 CAD)
 - Served as EMR system administrator across all 12 clinic locations — system configuration, data integrity, user access, and staff training
 - Implemented centralised tracking and quality improvement systems for 50+ concurrent operational initiatives
 - Ensured full compliance with health legislation, workplace safety regulations, and patient privacy standards across all sites
