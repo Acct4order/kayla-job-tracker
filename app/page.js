@@ -9,55 +9,60 @@ const RESUME = `Kayla Kwok
 Ontario, Canada | (437) 362-9928 | kaylakwok.km@gmail.com
 
 PROFESSIONAL SUMMARY
-Over ten years of public sector experience across governance, healthcare operations, and people management. Running secretariats for 100+ government committees, keeping 12 public health clinics operational, and leading teams of 400+ employees. Holds an LLB and a CESGA in corporate governance and ESG reporting. Settled in Markham, open to governance, EA, or senior administration roles in Ontario. Fluent in English, Cantonese, and Mandarin.
+Senior public sector executive with over 10 years of progressive leadership experience across multi-site operations, strategic planning, budget management, human resources, regulatory compliance, and Board-level governance. Managed an annual operating budget of HKD 10,000,000 (approx. CAD $1,800,000) across a 12-clinic public health network, with signing authority for project and procurement approvals up to HKD 800,000 (approx. CAD $145,000). Led unionized workforce management for 400+ employees, presented strategic initiatives to City Council, and served as EMR system administrator across 12 clinic locations. Holds an LLB and CESGA certification. Fluent in English, Cantonese, and Mandarin. Based in Ontario, Canada.
 
 EDUCATION AND CERTIFICATIONS
 LLB (Bachelor of Laws) | The Chinese University of Hong Kong, 2013
 CESGA, Certified ESG Analyst | EFFAS, Apr 2024
 
 CORE SKILLS
-Committee and Board Governance, Corporate Governance and ESG Compliance, Executive and Leadership Support, Agenda Minutes and Meeting Packages, Records and Confidential Documentation, Sustainability Reporting Frameworks, Project Coordination, Calendar and Scheduling, Office and Facilities Operations, Policy and Report Writing, Microsoft Office Suite, CCH iFirm, Trilingual English Cantonese Mandarin
+Executive Leadership and Strategic Planning, Board and Committee Governance, Budget Planning and Financial Oversight (CAD $1.8M), Signing Authority and Procurement Approval, Unionized Workforce Management, Human Resources and Performance Management, Regulatory and Legal Compliance, Multi-site Operations Management, Cross-functional Team Leadership, EMR System Administration, Quality Improvement, Process Improvement and Organizational Change, Executive Administrative Support, Complex Calendar and Travel Management, Event Planning and Coordination, Stakeholder Engagement, Policy Development, Microsoft Office 365, Zoom, Microsoft Teams, Google Workspace, CCH iFirm, Trilingual Communication (English, Cantonese, Mandarin)
 
 PROFESSIONAL EXPERIENCE
 
 Administrative Assistant, Project Lead – CCH iFirm Implementation
 DCY Professional Corporation CPA
 Toronto, ON | Sep 2024 – Aug 2025
-- Led firm-wide rollout of CCH iFirm across 30-person firm, on time, zero disruption
-- Sole internal project lead: vendor coordination, timeline management, trained all 30 staff
-- Deployed client-facing portal for 300+ clients, eliminating manual document handling
-- Reduced internal follow-up time 20% by centralising task tracking and communications
+- Managed day-to-day office operations for 30-person professional services firm while serving as sole internal lead for firm-wide technology implementation
+- Led end-to-end rollout of CCH iFirm practice management system across 30 staff and 300+ clients — vendor coordination, change management, staff training, zero operational disruption
+- Deployed client-facing portal eliminating manual document handling and reducing administrative follow-up time by 20%
+- Maintained confidential client files, compliance documentation, and administrative workflows to CPA regulatory standards
 
 Executive Manager
 HK Government, Office of the Government Chief Information Officer
 Hong Kong | Mar 2024 – May 2024
-- Prepared briefing notes, reports, and materials for a government digital platform with 3M+ users
-- Maintained alignment across 4 departments for senior leadership review
-- Delivered all Legislative Council submission materials on tight deadlines, zero late deliveries
+- Partnered directly with C-suite leadership on strategic operations and cross-departmental coordination for a government digital platform serving 3 million+ users
+- Prepared executive briefing notes, strategic reports, and compliance materials — 100% on-time delivery record across all statutory deadlines
+- Coordinated cross-departmental initiatives across 4 government agencies on behalf of executive leadership
+- Drafted and managed confidential correspondence and briefing packages for Legislative Council submissions
 
 Recruitment Manager
 HK Government, Food and Environmental Hygiene Department
 Hong Kong | Sep 2018 – Dec 2023
-- Led 8-person admin team handling full-cycle recruitment for 400+ employees
-- Rebuilt recruitment workflows from scratch, cut escalated HR matters by 30%
-- Maintained employment records and contracts for 400+ staff with strict confidentiality
-- Authored staffing reports and workforce analyses informing senior leadership decisions
+- Led full-cycle human resources operations for a 400+ person unionized government workforce — recruitment, onboarding, performance management, labour relations, and conflict resolution
+- Managed departmental HR budget, planning resource allocation and reporting on expenditure to senior leadership
+- Handled unionized employee relations directly, working within collective agreement frameworks and liaising with union representatives
+- Rebuilt recruitment workflows from scratch, reducing escalated HR matters by 30%
+- Supervised and developed 8-person administrative team through coaching, performance reviews, and professional development
 
 Operations Manager
 HK Government, Department of Health
 Hong Kong | Jul 2015 – Sep 2018
-- Oversaw daily operations of 12 public clinics serving 500,000+ patients
-- Built centralised tracking system for 50+ concurrent maintenance requests
-- Produced operational briefs for senior officials for time-sensitive decisions
-- Primary escalation point for complex complaints across all 12 sites
+- Oversaw executive-level operations of 12 public health clinics serving 500,000+ patients annually
+- Planned and managed annual operating budget of HKD 10,000,000 (approx. CAD $1,800,000), with signing authority for project and procurement approvals up to HKD 800,000 (approx. CAD $145,000)
+- Served as EMR system administrator across all 12 clinic locations — system configuration, data integrity, user access, and staff training
+- Implemented centralised tracking and quality improvement systems for 50+ concurrent operational initiatives
+- Ensured full compliance with health legislation, workplace safety regulations, and patient privacy standards across all sites
+- Served as primary escalation point for complex clinical and stakeholder issues across the entire network
 
 Council Secretary
 HK Government, Home Affairs Department
 Hong Kong | Aug 2013 – Jul 2015
-- Managed end-to-end administration for 100+ District Council and committee meetings
-- Primary liaison between District Council, public, and 10+ government departments
-- Tracked and closed 95% of committee action items on schedule
-- Planned and executed large-scale community events covering vendors, budgets, safety`;
+- Planned, budgeted, and executed a large-scale community event with approximately 60,000 attendees — managed vendors, logistics, safety compliance, and public communications from concept through completion
+- Presented full project proposal, budget, and operational plan to City Council, securing formal approval through Board-level presentation
+- Managed end-to-end administration for 100+ District Council and committee meetings including agendas, minutes, and action tracking
+- Served as primary liaison between District Council, public, NGOs, and 10+ government departments
+- Tracked and closed 95% of all committee action items on schedule`;
 
 const timeAgo = d => { if (!d) return '--'; const ms = Date.now() - new Date(d).getTime(), m = Math.floor(ms / 60000); if (m < 1) return 'just now'; if (m < 60) return m + 'm ago'; const h = Math.floor(m / 60); if (h < 24) return h + 'h ago'; return Math.floor(h / 24) + 'd ago'; };
 const fmtDate = d => { if (!d) return '--'; return new Date(d).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }); };
